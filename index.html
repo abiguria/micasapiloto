@@ -59,7 +59,11 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 .note{font-size:13px;color:var(--mute)}
 .fig{position:relative;min-height:500px;background:var(--blue2);border-radius:12px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px}
 .fig>svg{position:absolute;inset:0;width:100%;height:100%}
-.fig.map{min-height:340px;background:light-dark(#e8efe4,#15281f);background-image:none}
+.fig.map>#lmap{position:absolute;inset:0;border-radius:12px;z-index:1}
+.mk-d,.mk-c{display:grid;place-items:center;width:26px;height:26px;color:#fff;border:2px solid #fff;font:700 12px Archivo,sans-serif;box-shadow:0 1px 4px #0005}
+.mk-d{background:#1d3a6e;border-radius:6px}.mk-c{background:#2f6b4f;border-radius:50%}
+.leaflet-container{font:13px Archivo,sans-serif}
+.fig.map{min-height:360px;background:light-dark(#e8efe4,#15281f);background-image:none}
 .fin{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
 .fin b{grid-column:2}.fin span.ic{grid-row:span 3;width:30px;height:30px;border-radius:50%;background:var(--blue2);display:grid;place-items:center;font-weight:800;color:var(--blue)}
 .fin p{grid-column:2;margin:0;font-size:14px}
@@ -121,6 +125,8 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 @media(max-width:600px){section{padding:18px}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
 </head>
 <body>
@@ -220,6 +226,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
   <section>
     <h2>Dónde comprar y cómo financiar</h2>
     <div class="flag" style="margin-top:0"><b>Simulación del piloto.</b> El mapa es esquemático; distribuidores, cooperativas, distancias y precios son ejemplos inventados.</div>
+    <p class="note" id="mapNote"></p>
     <div class="fig map" id="mapFig"><svg id="map" role="img" aria-label="Mapa esquemático de tu terreno, distribuidores y cooperativas"></svg></div>
     <div class="legend"><span><i style="background:var(--red);border-radius:50%"></i>Tu terreno</span><span><i style="background:var(--blue)"></i>Centro de distribución</span><span><i style="background:var(--ok);border-radius:50%"></i>Cooperativa</span></div>
     <h3>Centros de distribución cerca de tu terreno</h3>
@@ -702,7 +709,7 @@ function drawMap(){
 }
 new ResizeObserver(()=>geo&&drawMap()).observe($('mapFig'));
 function supply(){
-  makeGeo();drawMap();
+  makeGeo();drawMap();realMap();
   const ds=geo.dist.map((d,i)=>({...d,id:String.fromCharCode(65+i),tot:last.tot*d.f*(d.cov/100)}));
   $('dist').innerHTML='<thead><tr><th>Distribuidor</th><th class="n">Distancia</th><th class="n">Tu lista</th><th>Cubre</th><th>Entrega</th></tr></thead><tbody>'+
     ds.map(d=>`<tr><td><b>${d.id}</b> · ${d.n} <span class="ex">(ejemplo)</span></td><td class="n">${d.k} km</td><td class="n">${Q(d.tot)}${d.cov<100?'<br><span class="ex">solo lo que tiene</span>':''}</td><td>${d.cov}% de tu lista</td><td>${d.ent?'A domicilio':'Recoger en tienda'}</td></tr>`).join('')+'</tbody>';
@@ -720,6 +727,40 @@ function supply(){
 }
 $('coops').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;const n=b.nextElementSibling;b.disabled=true;n.hidden=false;
   n.textContent='Simulación: en la versión completa, la cooperativa recibiría tu presupuesto y te llamaría para revisar opciones de crédito. No se envió nada.'});
+
+// ---------- Real map (OpenStreetMap + Leaflet) ----------
+let lmap=null,lay=null,center=null,pinned=false,geoQ='',fitted='';
+async function geocode(q){
+  const k='mihaus_geo:'+q;try{const c=localStorage.getItem(k);if(c)return JSON.parse(c)}catch(e){}
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gt&q='+encodeURIComponent(q+', Guatemala'));
+  const j=await r.json();if(!j.length)return null;const c=[+j[0].lat,+j[0].lon];try{localStorage.setItem(k,JSON.stringify(c))}catch(e){}return c}
+function realMap(){
+  if(!window.L)return;
+  const q=v('lugar').trim(),known=MLIST.some(x=>x.toLowerCase()===q.toLowerCase());
+  if(!lmap){const d=document.createElement('div');d.id='lmap';$('mapFig').appendChild(d);
+    lmap=L.map(d,{scrollWheelZoom:false});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(lmap);
+    lay=L.layerGroup().addTo(lmap);lmap.setView([15.5,-90.3],7);
+    lmap.on('click',e=>{center=[e.latlng.lat,e.latlng.lng];pinned=true;drawReal(false)});
+    new ResizeObserver(()=>lmap.invalidateSize()).observe($('mapFig'))}
+  $('mapNote').textContent='Mapa de OpenStreetMap. Toca el mapa para marcar dónde está tu terreno; los distribuidores y cooperativas son ejemplos ubicados a su alrededor.';
+  if(known&&q!==geoQ){geoQ=q;pinned=false;
+    geocode(q).then(c=>{if(c&&!pinned){center=c;drawReal(true)}}).catch(()=>{$('mapNote').textContent='No se pudo ubicar el municipio en el mapa. Toca el mapa para marcar tu terreno.'})}
+  else if(center)drawReal(false);
+}
+function drawReal(fit){
+  if(!lmap||!center||!geo)return;lay.clearLayers();
+  const off=(a,k)=>[center[0]-Math.sin(a)*k/111,center[1]+Math.cos(a)*k/(111*Math.cos(center[0]*Math.PI/180))];
+  for(const r of [5,10])L.circle(center,{radius:r*1000,color:'#14213a',weight:1,opacity:.35,dashArray:'4 6',fill:false,interactive:false}).addTo(lay);
+  const pts=[center],ic=(c,t)=>L.divIcon({className:'',html:`<span class="${c}">${t}</span>`,iconSize:[26,26],iconAnchor:[13,13]});
+  geo.dist.forEach((d,i)=>{const p=off(d.a,d.k);pts.push(p);const t=document.createElement('span');t.textContent=`${String.fromCharCode(65+i)} · ${d.n} (ejemplo) · ${d.k} km`;
+    L.marker(p,{icon:ic('mk-d',String.fromCharCode(65+i))}).bindTooltip(t).addTo(lay)});
+  geo.coop.forEach((c,i)=>{const p=off(c.a,c.k);pts.push(p);const t=document.createElement('span');t.textContent=`C${i+1} · ${c.n} (ejemplo) · ${c.k} km`;
+    L.marker(p,{icon:ic('mk-c','C'+(i+1))}).bindTooltip(t).addTo(lay)});
+  L.circleMarker(center,{radius:10,color:'#fff',weight:3,fillColor:'#c8432b',fillOpacity:1}).bindTooltip('Tu terreno',{permanent:true,direction:'top',offset:[0,-10]}).addTo(lay);
+  $('map').style.visibility='hidden';
+  if(fit)lmap.fitBounds(L.latLngBounds(pts).pad(0.15));
+}
 
 // ---------- Marketplace (simulated) ----------
 const TIPOS={arq:'Arquitectura',ing:'Ingeniería estructural',suelo:'Suelos y saneamiento',sup:'Supervisión de obra'};
