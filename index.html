@@ -22,13 +22,22 @@
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Archivo,system-ui,sans-serif;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--ink);font:clamp(15px,0.35vw + 13.5px,17px)/1.55 Archivo,system-ui,sans-serif;overflow-x:clip}
 header{background:var(--blue);color:var(--btn);padding:22px max(5vw,16px) 26px}
+header{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:flex-end;justify-content:space-between}
+.hctl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;font-size:14px}
+.hctl .seg{display:inline-flex;border:1px solid #ffffff66;border-radius:99px;overflow:hidden}
+.hctl .seg button{background:transparent;border:0;border-radius:0;color:inherit;min-height:34px;padding:4px 12px;font-size:13px;font-weight:600}
+.hctl .seg button[aria-pressed=true]{background:#ffffff;color:#1d3a6e}
+:root[data-theme=dark] .hctl .seg button[aria-pressed=true]{background:#e8edf6;color:#0f1a2e}
+.hctl input{width:78px;min-height:34px;padding:4px 8px;font-size:14px;border-radius:8px;border:1px solid #ffffff66;background:#ffffff22;color:inherit}
 header h1{margin:0;font-size:clamp(30px,4vw,46px);line-height:1.05;font-weight:800;text-wrap:balance}
 header p{margin:8px 0 0;max-width:62ch}
 .tag{display:inline-block;border:1px solid currentColor;border-radius:99px;padding:3px 12px;font-size:13px;margin-top:12px;opacity:.85}
-main{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;padding:24px max(5vw,16px) 60px;max-width:1320px;margin:auto}
-@media(min-width:980px){main{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}#side{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto}}
+main{display:grid;grid-template-columns:minmax(0,1fr);gap:clamp(16px,2vw,28px);padding:clamp(16px,2.5vw,32px) clamp(12px,4vw,56px) 60px;max-width:1480px;margin:auto}
+@media(min-width:980px){main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(min-width:1200px){main{grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr)}}
+@media(min-width:980px){#side{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto}}
 section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}
 h2{font-size:22px;line-height:1.15;margin:0 0 4px;display:flex;align-items:center;gap:12px}
 h2 .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--blue);color:var(--btn);display:grid;place-items:center;font-size:17px}
@@ -64,7 +73,7 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 .chip .hint{font-size:12px}
 .chip[aria-checked=true] .hint{color:inherit;opacity:.8}
 .note{font-size:13px;color:var(--mute)}
-.fig{position:relative;min-height:500px;background:var(--blue2);border-radius:12px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px}
+.fig{position:relative;min-height:clamp(360px,42vw,640px);background:var(--blue2);border-radius:12px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px}
 .fig>svg{position:absolute;inset:0;width:100%;height:100%}
 .dres{display:block;width:100%;text-align:left;background:light-dark(#fff,#0f1a2e);color:var(--ink);border:1.5px solid var(--line);margin-top:6px;font-weight:500;min-height:44px}
 .fig.map>#lmap{position:absolute;inset:0;border-radius:12px;z-index:1}
@@ -86,14 +95,15 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
 .vars{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:4px 0 14px}
 .var{display:block;text-align:left;background:var(--bg);color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:500;line-height:1.3}
-.var b{display:block;font-size:15px}.var strong{display:block;font-size:20px;margin-top:6px;white-space:nowrap}.var small{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+.var b{display:block;font-size:15px}.var strong{display:block;font-size:20px;margin-top:6px}.var small{display:block;color:var(--mute);font-size:12px;margin-top:2px}
 .var[aria-pressed=true]{border-color:var(--ok);background:light-dark(#e7f2ec,#173027);box-shadow:0 0 0 2px var(--ok) inset}
 .iter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.iter span{flex:1;font-weight:700;min-width:160px}
 #nextA{background:var(--ok);border-color:var(--ok)}
 .up input,.check input{accent-color:var(--ok)}
 .flag{border-left:4px solid var(--red);background:light-dark(#fbeae6,#3a1f1c);padding:10px 12px;border-radius:8px;margin:8px 0;font-size:15px}
 .okbox{border-left:4px solid var(--ok);background:light-dark(#e7f2ec,#173027);padding:10px 12px;border-radius:8px;margin:8px 0;font-size:15px}
-.big{font-size:clamp(30px,4.5vw,44px);font-weight:800;line-height:1.05;white-space:nowrap}
+.big{font-size:clamp(26px,3.6vw,44px);font-weight:800;line-height:1.1}
+.big small{display:block;font-size:.5em;font-weight:600;color:var(--mute);margin-top:4px}
 .stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
 .stage{border:1px solid var(--line);border-radius:12px;padding:12px 12px 12px 16px;position:relative;overflow:hidden;background:var(--paper)}
 .stage::before{content:"";position:absolute;inset:0 auto 0 0;width:6px}
@@ -103,7 +113,7 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 .st1 .tg{background:#1d3a6e}.st2 .tg{background:#5f86d6}.st3 .tg{background:#9db8e6;color:#14213a}
 .sbar{display:flex;height:14px;border-radius:99px;overflow:hidden;margin:14px 0 4px;background:var(--line)}
 .sbar i{display:block;height:100%}.sbar .b1{background:#1d3a6e}.sbar .b2{background:#5f86d6}.sbar .b3{background:repeating-linear-gradient(45deg,#9db8e6 0 4px,#d3e0f5 4px 8px)}
-.stage b{display:block;font-size:20px;white-space:nowrap}.stage small{color:var(--mute);display:block}
+.stage b{display:block;font-size:20px}.stage small{color:var(--mute);display:block}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 td.n,th.n{text-align:right;white-space:nowrap}
@@ -159,9 +169,16 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 <body>
 <div id="app">
 <header>
+  <div>
   <h1>Del sueño al presupuesto de tu casa</h1>
   <p>Cuéntanos qué necesitas. Te mostramos distribuciones, cuánto cuestan los materiales y cómo construir por etapas.</p>
   <span class="tag">Piloto MIHAUS · casas de un nivel · precios de referencia por validar</span>
+  </div>
+  <div class="hctl">
+    <span>Modo <span class="seg" id="thSeg"><button type="button" data-t="auto">Auto</button><button type="button" data-t="light">Claro</button><button type="button" data-t="dark">Oscuro</button></span></span>
+    <span>Montos <span class="seg" id="curSeg"><button type="button" data-c="Q">Q</button><button type="button" data-c="QU">Q y US$</button></span></span>
+    <label id="rateBox" hidden>1 US$ = Q <input id="rate" type="number" step="0.01" min="1" value="7.32" aria-label="Tipo de cambio"></label>
+  </div>
 </header>
 <main id="p1">
 <div class="inp" id="form">
@@ -340,7 +357,16 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 <script>
 {
 const $=id=>document.getElementById(id);
-const Q=n=>'Q'+Math.round(n).toLocaleString('es-GT');
+let CUR='Q',RATE=7.32;
+const Q=n=>{const q='Q'+Math.round(n).toLocaleString('es-GT');return CUR==='QU'?`${q} (US$${Math.round(n/RATE).toLocaleString('en-US')})`:q};
+const setSeg=(id,attr,val)=>{for(const b of $(id).children)b.setAttribute('aria-pressed',b.dataset[attr]===val)};
+let TH='auto';try{TH=localStorage.getItem('mihaus_theme')||'auto'}catch(e){}
+const applyTheme=()=>{if(TH==='auto')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=TH;setSeg('thSeg','t',TH)};
+applyTheme();
+$('thSeg').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;TH=b.dataset.t;try{localStorage.setItem('mihaus_theme',TH)}catch(x){}applyTheme();if(last.mods)drawPlan()});
+setSeg('curSeg','c',CUR);
+$('curSeg').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;CUR=b.dataset.c;setSeg('curSeg','c',CUR);$('rateBox').hidden=CUR!=='QU';build();if(!$('market').hidden)renderMarket()});
+$('rate').addEventListener('input',()=>{const r=parseFloat($('rate').value);if(r>1){RATE=r;build();if(!$('market').hidden)renderMarket()}});
 const MUNI={"Alta Verapaz":["Cobán","Chahal","Chisec","Fray Bartolomé de las Casas","Lanquín","Panzós","Raxruhá","San Cristóbal Verapaz","San Juan Chamelco","San Miguel Tucurú","San Pedro Carchá","Santa Catarina La Tinta","Santa Cruz Verapaz","Santa María Cahabón","Senahú","Tactic","Tamahú"],"Baja Verapaz":["Salamá","Cubulco","Granados","Purulhá","Rabinal","San Jerónimo","San Miguel Chicaj","Santa Cruz El Chol"],"Chimaltenango":["Chimaltenango","Acatenango","El Tejar","Parramos","Patzicia","Patzun","San Andrés Itzapa","San José Poaquil","San Juan Comalapa","San Martín Jilotepeque","San Miguel Pochuta","San Pedro Yepocapa","Santa Apolonia","Santa Cruz Balanyá","Tecpán Guatemala","Zaragoza"],"Chiquimula":["Chiquimula","Camotán","Concepción Las Minas","Esquipulas","Ipala","Jocotán","Olopa","Quezaltepeque","San Jacinto","San José La Arada","San Juan Ermita"],"El Progreso":["Guastatoya","El Jícaro","Morazán","San Agustín Acasaguastlan","San Antonio La Paz","San Cristóbal Acasaguastlan","Sanarate","Sansare"],"Escuintla":["Escuintla","Guanagazapa","Iztapa","La Democracia","La Gomera","Masagua","Nueva Concepción","Palín","Pueblo Nuevo Tiquisate","Puerto de San José","San Vicente Pacaya","Santa Lucía Cotzumalguapa","Sipacate","Siquinalá"],"Guatemala":["Guatemala","Amatitlán","Chinautla","Chuarrancho","Fraijanes","Mixco","Palencia","San José del Golfo","San José Pinula","San Juan Sacatepequez","San Miguel Petapa","San Pedro Ayampuc","San Pedro Sacatepequez","San Raymundo","Santa Catarina Pinula","Villa Canales","Villa Nueva"],"Huehuetenango":["Huehuetenango","Aguacatán","Chiantla","Colotenango","Concepción Huista","Cuilco","Jacaltenango","La Democracia","La Libertad","Malacatancito","Nentón","Petatán","San Antonio Huista","San Gaspar Ixchil","San Ildefonso Ixtahuacán","San Juan Atitán","San Juan Ixcoy","San Mateo Ixtatán","San Miguel Acatán","San Pedro Necta","San Pedro Soloma","San Rafael La Independencia","San Rafael Petzal","San Sebastián Coatán","San Sebastián Huehuetenango","Santa Ana Huista","Santa Bárbara","Santa Cruz Barillas","Santa Eulalia","Santiago Chimaltenango","Tectitán","Todos Santos Cuchumatán","Unión Cantinil"],"Izabal":["Puerto Barrios","El Estor","Livingston","Los Amates","Morales"],"Jalapa":["Jalapa","Mataquescuintla","Monjas","San Carlos Alzatate","San Luis Jilotepeque","San Manuel Chaparrón","San Pedro Pinula"],"Jutiapa":["Jutiapa","Agua Blanca","Asunción Mita","Atescatempa","Comapa","Conguaco","El Adelanto","El Progreso","Jalpatagua","Jerez","Moyuta","Pasaco","Quezada","San José Acatempa","Santa Catarina Mita","Yupiltepeque","Zapotitlán"],"Petén":["Flores","Dolores","El Chal","La Libertad","Las Cruces","Melchor de Mencos","Poptún","San Andrés","San Benito","San Francisco","San José","San Luis","Santa Ana","Sayaxche"],"Quetzaltenango":["Quetzaltenango","Almolonga","Cabrican","Cajola","Cantel","Coatepeque","Colomba","Concepción Chiquirichapa","El Palmar","Flores Costa Cuca","Génova","Huitán","La Esperanza","Olintepeque","Palestina de los Altos","Salcajá","San Carlos Sija","San Francisco La Unión","San Juan Ostuncalco","San Martín Sacatepequez","San Mateo","San Miguel Siguilça","Sibilia","Zunil"],"Quiché":["Santa Cruz del Quiché","Canilla","Chajul","Chicamán","Chiché","Chinique","Cunén","Joyabaj","Pachalum","Patzité","Ixcán","Sacapulas","San Andrés Sajcabajá","San Antonio Ilotenango","San Bartolomé Jocotenango","San Juan Cotzal","San Miguel Uspatán","San Pedro Jocopilas","Santa María Nebaj","Chichicastenango","Zacualpa"],"Retalhuleu":["Retalhuelu","Champerico","El Asintal","Nuevo San Carlos","San Andrés Villa Seca","San Felipe Retalhuleu","San Martín Zapotitlán","San Sebastián","Santa Cruz Mulúa"],"Sacatepéquez":["Antigua Guatemala","Ciudad Vieja","Jocotenango","Magdalena Milpas Altas","Pastores","San Antonio Aguas Calientes","San Bartolomé Milpas Altas","San Juan Alotenango","San Lucas Sacatepequez","San Miguel Dueñas","Santa Catarina Barahona","Santa Lucía Milpas Altas","Santa María de Jesús","Santiago Sacatepequez","Santo Domingo Xenacoj","Sumpango"],"San Marcos":["San Marcos","Ayutla","Catarina","Comitancillo","Concepción Tutuapa","El Quetzal","El Tumbador","Esquipulas Palo Gordo","Ixchiguan","La Blanca","La Reforma","Malacatán","Nuevo Progreso","Ocos","Pajapita","Río Blanco","San Antonio Sacatepéquez","San Cristóbal Cucho","San José El Rodeo","San José Ojetenán","San Lorenzo","San Miguel Ixtahuacan","San Pablo","San Pedro Sacatepéquez","San Rafael Pié de la Cuesta","Sibinal","Sipacapa","Tacaná","Tajumulco","Tejutla"],"Santa Rosa":["Cuilapa","Berberena","Casillas","Chiquimulilla","Guazacapán","Nueva Santa Rosa","Oratorio","Pueblo Nuevo Viñas","San Juan TEcuaco","San Rafael Las Flores","San Rosa de Lima","Santa Cruz Naranjo","Santa María Ixhuatan","Taxisco"],"Sololá":["Sololá","Concepción","Nahualá","Panajachel","San Andrés Semetabaj","San Antonio Palopó","San José Chacaya","San Juan La Laguna","San Lucas Tolimán","San Marcos La Laguna","San Pedro La Laguna","Santa Catarina Ixtahuacán","Santa Catarina Palopó","Santa Clara La Laguna","Santa Cruz La Laguna","Santa Lucía Utatlán","Santa María Visitación","Santiago Atitlán","Sna Pablo La Laguna"],"Suchitepéquez":["Mazatenango","Chicacao","Cuyotenango","Patulul","Pueblo Nuevo Suchitepéquez","Río Bravo","Samayac","San Antonio Suchitepéquez","San Bernardino","San Francisco Zapotitlán","San Gabriel","San José El Ídolo","San José La Máquina","San Juan Bautista","San Lorenzo","San Miguel Panán","San Pablo Jocopilas","Santa Bárbara","Santo Domingo Suchitepequez","Santo Tomás La Unión","Zunilito"],"Totonicapán":["Totonicapán","Momostenango","San Andrés Xecul","San Bartolo Aguas Calientes","San Cristóbal Totonicapán","San Francisco El Alto","Santa Lucía La Reforma","Santa María Chiquimula"],"Zacapa":["Zacapa","Cabañas","Estanzuela","Gualán","Huité","La Unión","Río Hondo","San Diego","Teculután","Usumatlán"]};
 const MLIST=Object.entries(MUNI).flatMap(([d,ms])=>ms.map(x=>`${x}, ${d}`));
 $('munis').innerHTML=MLIST.map(x=>`<option value="${x}">`).join('');
@@ -653,7 +679,9 @@ function flags(){
 
 function budget(){
   const {cost,tot}=last;
-  $('total').textContent=`${Q(tot*0.85)} – ${Q(tot*1.15)}`;
+  {const qf=n=>'Q'+Math.round(n).toLocaleString('es-GT'),uf=n=>'US$'+Math.round(n/RATE).toLocaleString('en-US');
+   $('total').innerHTML='';$('total').append(`${qf(tot*0.85)} – ${qf(tot*1.15)}`);
+   if(CUR==='QU'){const sm=document.createElement('small');sm.textContent=`${uf(tot*0.85)} – ${uf(tot*1.15)} · a Q${RATE} por dólar`;$('total').append(sm)}}
   $('totalNote').textContent=`Opción «${VARS.find(x=>x[0]===sel)[1]}». Punto medio ${Q(tot)} en materiales; rango de ±15% porque los precios son de referencia.`;
   const names={1:'Núcleo: 1 dormitorio, cocina, baño y pila',2:'Lo que necesitas hoy',3:'Lo que puede esperar'};
   const H0=num('hoy'),A=num('mes');let cum=0;
