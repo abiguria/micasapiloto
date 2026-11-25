@@ -676,7 +676,13 @@ function drawPlan(){
   for(const [k] of L.seg){const t=k[0],[a,b]=k.slice(1).split(',').map(Number);
     const ext=t==='h'?occ.has(a+','+b)!==occ.has(a+','+(b-1)):occ.has(a+','+b)!==occ.has((a-1)+','+b);
     const [x1,y1,x2,y2]=t==='h'?[a,b,a+1,b]:[a,b,a,b+1];
-    walls+=`<line x1="${X(x1*0.5)}" y1="${Y(y1*0.5)}" x2="${X(x2*0.5)}" y2="${Y(y2*0.5)}" stroke="var(--ink)" stroke-width="${ext?4:1.8}" stroke-linecap="square"/>`}
+    if(!ext){walls+=`<line x1="${X(x1*0.5)}" y1="${Y(y1*0.5)}" x2="${X(x2*0.5)}" y2="${Y(y2*0.5)}" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="square"/>`;continue}
+    // exterior: the wall sits inside the outline, so it never crosses the setback or lot line; ends extend only at inner (concave) corners
+    const W2=4,sx=Math.sign(X(1)-X(0)),sy=Math.sign(Y(1)-Y(0));
+    if(t==='h'){const r=occ.has(a+','+b)?b:b-1,dy=(r===b?1:-1)*sy*W2/2,e0=occ.has((a-1)+','+r)?W2:0,e1=occ.has((a+1)+','+r)?W2:0;
+      walls+=`<line x1="${X(x1*0.5)-sx*e0}" y1="${Y(y1*0.5)+dy}" x2="${X(x2*0.5)+sx*e1}" y2="${Y(y2*0.5)+dy}" stroke="var(--ink)" stroke-width="${W2}" stroke-linecap="butt"/>`}
+    else{const c=occ.has(a+','+b)?a:a-1,dx=(c===a?1:-1)*sx*W2/2,e0=occ.has(c+','+(b-1))?W2:0,e1=occ.has(c+','+(b+1))?W2:0;
+      walls+=`<line x1="${X(x1*0.5)+dx}" y1="${Y(y1*0.5)-sy*e0}" x2="${X(x2*0.5)+dx}" y2="${Y(y2*0.5)+sy*e1}" stroke="var(--ink)" stroke-width="${W2}" stroke-linecap="butt"/>`}}
   const p=L.mods.filter(m=>m.k==='pas');
   if(p.length){const x=X((p[0].x+1)*0.5),y1=Y(p[0].y*0.5),y2=Y((p[p.length-1].y+p[p.length-1].h)*0.5),ym=(y1+y2)/2;
     labels+=`<text x="${x}" y="${ym}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)" transform="rotate(-90 ${x} ${ym})" dy="4">Pasillo 1.0 m</text>`;
@@ -1014,15 +1020,28 @@ function draw3D(){
       else{const sx=m.sd==='R'?m.x+m.w:m.x,z0=y0m+Hm/2-ww/2;for(let j=Math.floor(z0/0.5);j<Math.ceil((z0+ww)/0.5);j++)mark(`v${sx},${j}`,m.k==='bano'?'winS':'win')}}}
   const p=L.mods.filter(m=>m.k==='pas');if(p.length)for(let i=0;i<2;i++)mark(`h${p[0].x+i},${p[0].y}`,'door');
   // walls: block up to the crown beam (solera de corona) in concrete
+  const occW=new Set();for(const m of L.mods)for(let i=m.x;i<m.x+m.w;i++)for(let j=m.y;j<m.y+m.h;j++)occW.add(i+','+j);
+  const oc=(i,j)=>occW.has(i+','+j);
   for(const [k] of L.seg){const t=k[0],[a,b]=k.slice(1).split(',').map(Number),o=op.get(k);
-    const seg=(y1,y2,m,isB)=>{if(y2<=y1)return;const h=y2-y1,yc=(y1+y2)/2,len=0.5+TK;
-      if(t==='h')box(len,h,TK,a*0.5+0.25,yc,-(b*0.5),m,isB?len/0.8:len,isB?h/0.4:h);else box(TK,h,len,a*0.5,yc,-(b*0.5+0.25),m,isB?len/0.8:len,isB?h/0.4:h)};
+    // exterior walls are placed fully inside the house outline (outer face on the line), so no wall crosses the setback or lot line;
+    // ends extend only at inner corners. Interior walls stay centred and extend only where they meet other walls.
+    let cx,cz,e0,e1;
+    if(t==='h'){const up=oc(a,b),dn=oc(a,b-1),ext=up!==dn;
+      if(ext){const r=up?b:b-1;cz=-(b*0.5)+(up?-TK/2:TK/2);e0=oc(a-1,r)?TK:0;e1=oc(a+1,r)?TK:0}
+      else{cz=-(b*0.5);e0=oc(a-1,b)&&oc(a-1,b-1)?TK/2:0;e1=oc(a+1,b)&&oc(a+1,b-1)?TK/2:0}
+      cx=a*0.5+0.25}
+    else{const rt=oc(a,b),lf=oc(a-1,b),ext=rt!==lf;
+      if(ext){const c=rt?a:a-1;cx=a*0.5+(rt?TK/2:-TK/2);e0=oc(c,b-1)?TK:0;e1=oc(c,b+1)?TK:0}
+      else{cx=a*0.5;e0=oc(a,b-1)&&oc(a-1,b-1)?TK/2:0;e1=oc(a,b+1)&&oc(a-1,b+1)?TK/2:0}
+      cz=-(b*0.5+0.25)}
+    const seg=(y1,y2,m,isB)=>{if(y2<=y1)return;const h=y2-y1,yc=(y1+y2)/2,len=0.5+e0+e1,sh=(e1-e0)/2;
+      if(t==='h')box(len,h,TK,cx+sh,yc,cz,m,isB?len/0.8:len,isB?h/0.4:h);else box(TK,h,len,cx,yc,cz-sh,m,isB?len/0.8:len,isB?h/0.4:h)};
     const piece=(y1,y2)=>{seg(y1,Math.min(y2,SOL),MT.block,true);seg(Math.max(y1,SOL),y2,MT.conc,false)};
     if(o==='door'){piece(2.1,H);
-      if(t==='h')box(0.5,2.1,0.04,a*0.5+0.25,1.05,-(b*0.5),MT.door);else box(0.04,2.1,0.5,a*0.5,1.05,-(b*0.5+0.25),MT.door)}
+      if(t==='h')box(0.5,2.1,0.04,cx,1.05,cz,MT.door);else box(0.04,2.1,0.5,cx,1.05,cz,MT.door)}
     else if(o==='win'||o==='winS'){const lo=o==='winS'?1.6:0.9;piece(0,lo);piece(2.1,H);
-      if(t==='h'){box(0.5,2.1-lo,0.03,a*0.5+0.25,(lo+2.1)/2,-(b*0.5),MT.glass);box(0.5,0.05,0.06,a*0.5+0.25,lo,-(b*0.5),MT.frame);box(0.5,0.05,0.06,a*0.5+0.25,2.1,-(b*0.5),MT.frame)}
-      else{box(0.03,2.1-lo,0.5,a*0.5,(lo+2.1)/2,-(b*0.5+0.25),MT.glass);box(0.06,0.05,0.5,a*0.5,lo,-(b*0.5+0.25),MT.frame);box(0.06,0.05,0.5,a*0.5,2.1,-(b*0.5+0.25),MT.frame)}}
+      if(t==='h'){box(0.5,2.1-lo,0.03,cx,(lo+2.1)/2,cz,MT.glass);box(0.5,0.05,0.06,cx,lo,cz,MT.frame);box(0.5,0.05,0.06,cx,2.1,cz,MT.frame)}
+      else{box(0.03,2.1-lo,0.5,cx,(lo+2.1)/2,cz,MT.glass);box(0.06,0.05,0.5,cx,lo,cz,MT.frame);box(0.06,0.05,0.5,cx,2.1,cz,MT.frame)}}
     else piece(0,H)}
   // roofs: the footprint is split into rectangles (no roof over voids) and each gets its own gable,
   // ridge along its longer side, 27% slope, 0.40 m eaves only on outer edges and never past the lot line
