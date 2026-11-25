@@ -161,6 +161,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
   <p class="colhead"><i></i>Lo que nos cuentas <span>· tus respuestas</span></p>
   <section>
     <h2><span class="n">1</span>Cuéntanos tu casa</h2>
+    <div class="q" style="margin:4px 0 14px"><label for="nombre">Tu nombre completo <span class="hint">(aparece en tu presupuesto)</span></label><input id="nombre" autocomplete="name" placeholder="Nombre y apellidos"></div>
     <p class="sub">Escribe o habla con tus palabras: quiénes viven, qué espacios necesitas, cómo es el terreno y cuánto tienes. La IA llena el formulario y tú lo revisas.</p>
     <textarea id="story" aria-label="Cuéntanos tu casa" placeholder="Ejemplo: Somos 5, mi esposa, yo y tres hijos. Tenemos un terreno de 8 por 15 metros en Chiantla, es plano. Queremos dos cuartos ahora y otro después, cocina con comedor, un baño y la pila afuera. No hay agua entubada todavía. Tenemos 25 mil quetzales y mi hermano manda 1,500 al mes."></textarea>
     <div class="btns">
@@ -351,7 +352,7 @@ let P={};
 try{P=JSON.parse(localStorage.getItem('mihaus_precios')||'{}')}catch(e){P={}}
 const pr=k=>(P[k]!=null&&!isNaN(P[k]))?+P[k]:PDEF[k].p;
 
-const FIELDS=['lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
+const FIELDS=['nombre','lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
 try{const s=JSON.parse(localStorage.getItem('mihaus_form')||'null');if(s)FIELDS.forEach(f=>{if(s[f]!=null&&$(f))$(f).value=s[f]})}catch(e){}
 const v=id=>$(id).value, num=id=>Math.max(0,parseFloat($(id).value)||0);
 const o=k=>v('o_'+k), stg=x=>x==='ya'?2:3;
@@ -676,7 +677,7 @@ $('form').addEventListener('change',e=>{if(e.target.id!=='story'&&!e.target.clos
 const DISC='Lo que recibes es un diagrama ilustrativo y un presupuesto de materiales de referencia. No son planos constructivos, no es diseño estructural ni evaluación de suelo, y no sirve para tramitar licencia. Guatemala es zona sísmica y el presupuesto supone suelo firme y una casa de un nivel. No incluye mano de obra, transporte, licencias, terreno ni imprevistos.';
 function resumen(){
   const {tot,cost,mods}=last,esp=mods.filter(m=>m.k!=='cor'&&m.k!=='pas').map(m=>m.l).join(', ');
-  return `Tu casa en ${v('lugar')}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
+  return `${v('nombre').trim()?v('nombre').trim().split(' ')[0]+', t':'T'}u casa en ${v('lugar')}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
    `La primera etapa, el núcleo, cuesta cerca de ${Q(cost[1])}. ${$('plazo').textContent} `+
    (blocked?'Por las condiciones del terreno, se recomienda que un especialista revise el proyecto antes de construir. ':'')+
    'Recuerda: esto no incluye mano de obra ni transporte, y no son planos constructivos.';
@@ -701,10 +702,11 @@ async function makePDF(){
   const para=(t,size=10,bold=false,color=[20,33,58])=>{t=fx(t);doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...color);
     const lines=doc.splitTextToSize(t,CW);need(lines.length*size*0.42+2);doc.text(lines,M,y);y+=lines.length*size*0.42+2};
   const h2=t=>{y+=3;need(12);para(t,13,true,[29,58,110])};
-  doc.setFillColor(29,58,110);doc.rect(0,0,PW,30,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);
+  doc.setFillColor(29,58,110);doc.rect(0,0,PW,36,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);
   doc.text('MIHAUS · Presupuesto de referencia',M,14);doc.setFont('helvetica','normal');doc.setFontSize(10);
-  doc.text(`${v('lugar')} · ${new Date().toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})} · Piloto`,M,22);
-  y=40;
+  doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(`Preparado para: ${v('nombre').trim()}`,M,23);doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text(`${v('lugar')} · ${new Date().toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})} · Piloto`,M,30);
+  y=46;
   para(`Distribución: ${name}. ${Math.round(L.area)} m² techados (${Math.round(L.circ)} m² de pasillo) en un terreno de ${L.F} × ${L.D} m. ${num('personas')} personas.`,10);
   if(L.adj)para('Distribución ajustada para caber en el terreno: '+L.adj+'.',10,true);
   para(L.ov,10);
@@ -743,16 +745,18 @@ async function makePDF(){
   return doc.output('arraybuffer');
 }
 let dlApi=null;
-$('entiendo').addEventListener('change',e=>{$('dl').disabled=!e.target.checked;$('dlNote').textContent=e.target.checked?'':'Marca la casilla para descargar.'});
+const dlState=()=>{const ok=$('entiendo').checked,nm=v('nombre').trim().length>=3;$('dl').disabled=!(ok&&nm);
+  $('dlNote').textContent=!nm?'Escribe tu nombre completo en el paso 1 para descargar.':!ok?'Marca la casilla para descargar.':''};
+$('entiendo').addEventListener('change',dlState);$('nombre').addEventListener('input',dlState);
 $('dl').addEventListener('click',async()=>{
   if(!window.jspdf){$('dlNote').textContent='No se pudo preparar el PDF en este navegador.';return}
   $('dl').disabled=true;$('dlNote').textContent='Preparando tu PDF…';
-  try{const data=await makePDF();const lug=v('lugar').split(',')[0].normalize('NFD').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'casa';
+  try{const data=await makePDF();const slug=t=>t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'').toLowerCase();const lug=slug(v('nombre'))||slug(v('lugar').split(',')[0])||'casa';
     const fn=`presupuesto-mihaus-${lug}.pdf`;
     if(dlApi)await dlApi.save({filename:fn,data});
     else{const url=URL.createObjectURL(new Blob([data],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}$('dlNote').textContent='Listo: tu presupuesto se descargó.'}
   catch(e){$('dlNote').textContent=e&&e.code==='declined'?'Descarga cancelada.':e&&e.code==='rate_limited'?'Espera un momento e intenta de nuevo.':'No se pudo descargar. Intenta de nuevo o usa “Copiar resumen”.'}
-  $('dl').disabled=!$('entiendo').checked});
+  dlState()});
 
 // ---------- Map, suppliers, cooperatives (simulated) ----------
 const seedOf=t=>{let h=1779033703;for(const ch of t)h=Math.imul(h^ch.charCodeAt(0),3432918353),h=h<<13|h>>>19;return ()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return ((h^=h>>>16)>>>0)/4294967296}};
@@ -788,7 +792,7 @@ function supply(){
   makeGeo();drawMap();realMap();
   const ds=geo.dist.map((d,i)=>({...d,id:String.fromCharCode(65+i),tot:last.tot*d.f*(d.cov/100)}));
   $('dist').innerHTML='<thead><tr><th>Distribuidor</th><th class="n">Distancia</th><th class="n">Tu lista</th><th>Cubre</th><th>Entrega</th></tr></thead><tbody>'+
-    ds.map(d=>`<tr><td><b>${d.id}</b> · ${d.n} <span class="ex">(ejemplo)</span></td><td class="n">${d.k} km</td><td class="n">${Q(d.tot)}${d.cov<100?'<br><span class="ex">solo lo que tiene</span>':''}</td><td>${d.cov}% de tu lista</td><td>${d.ent?'A domicilio':'Recoger en tienda'}</td></tr>`).join('')+'</tbody>';
+    ds.map(d=>`<tr><td><b>${d.id}</b> · ${d.n} <span class="ex">(ejemplo)</span></td><td class="n">${d.k} km</td><td class="n">${Q(d.tot)}${d.cov<100?'<br><span class="ex"> (solo lo que tiene)</span>':''}</td><td>${d.cov}% de tu lista</td><td>${d.ent?'A domicilio':'Recoger en tienda'}</td></tr>`).join('')+'</tbody>';
   const best=ds.filter(d=>d.cov===100).sort((a,b)=>a.tot-b.tot)[0];
   geo.best=best;
   $('coops').innerHTML=geo.coop.map((c,i)=>`<article class="pro"><span class="ex">Cooperativa de ejemplo</span><h3>C${i+1} · ${c.n}</h3><div class="meta">A ${c.k} km de tu terreno</div><ul><li><span>${c.p}</span></li><li><span>Monto de ejemplo</span><b>hasta ${Q(c.max)}</b></li><li><span>Plazo de ejemplo</span><b>hasta ${c.pl} meses</b></li><li><span>Tasa</span><b>se confirma con la cooperativa</b></li></ul><p class="note">Te pedirían: DPI, constancia de ingresos o de remesas y este presupuesto en PDF.</p><button type="button" class="ghost" data-c="${i}">Pedir que me contacten</button><p class="note" hidden></p></article>`).join('');
@@ -917,7 +921,7 @@ build();route();
     $('fill').addEventListener('click',async()=>{
       const t=$('story').value.trim();if(!t){$('aiNote').textContent='Escribe o dicta primero cómo es tu casa.';return}
       $('fill').disabled=true;$('aiNote').textContent='Leyendo lo que contaste…';
-      const schema='{"lugar":string,"clima":"frio|templado|calido","frente":number,"fondo":number,"pendiente":"plano|ligera|fuerte","barranco":"si|no","relleno":"si|no|nose","encharca":"si|no","tipo":"nueva|ampliacion","luz":"si|no","agua":"si|no","pozo":"si|no","personas":number,"dormYa":"1|2|3","dormDesp":"0|1|2","banos":"1|2","comedor":"integrado|separado","sala":"no|integrada|separada","cocina":"lena|gas|electrica","pila":"patio|dentro","o_local":"no|ya|despues","o_bodega":"no|ya|despues","o_corredor":"no|ya|despues","o_familiar":"no|ya|despues","otroTxt":string,"hoy":number,"mes":number,"credito":"si|no"}';
+      const schema='{"nombre":string,"lugar":string,"clima":"frio|templado|calido","frente":number,"fondo":number,"pendiente":"plano|ligera|fuerte","barranco":"si|no","relleno":"si|no|nose","encharca":"si|no","tipo":"nueva|ampliacion","luz":"si|no","agua":"si|no","pozo":"si|no","personas":number,"dormYa":"1|2|3","dormDesp":"0|1|2","banos":"1|2","comedor":"integrado|separado","sala":"no|integrada|separada","cocina":"lena|gas|electrica","pila":"patio|dentro","o_local":"no|ya|despues","o_bodega":"no|ya|despues","o_corredor":"no|ya|despues","o_familiar":"no|ya|despues","otroTxt":string,"hoy":number,"mes":number,"credito":"si|no"}';
       try{
         const r=await sample.json(`Eres el asistente de MIHAUS, una herramienta para familias rurales de Guatemala que planean construir su casa de un nivel. Lee el relato y devuelve SOLO un objeto JSON con estas claves y valores permitidos: ${schema}. Incluye únicamente las claves que el relato menciona o permite deducir con claridad; omite las demás. Montos en quetzales; medidas en metros. Las zonas altas de Huehuetenango, Quetzaltenango, Totonicapán, Sololá, Quiché y San Marcos son "frio". "otroTxt" solo para espacios que no estén en la lista.\n\nRelato:\n"""${t}"""`,{modelTier:'quick'});
         let n=0;
