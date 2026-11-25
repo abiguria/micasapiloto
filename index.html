@@ -209,7 +209,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
       <div class="q"><label for="frente">Frente del terreno</label><div class="unit"><input id="frente" type="number" min="4" step="0.5" value="8" inputmode="decimal"><span>m</span></div></div>
       <div class="q"><label for="fondo">Fondo del terreno</label><div class="unit"><input id="fondo" type="number" min="4" step="0.5" value="15" inputmode="decimal"><span>m</span></div></div>
     </div>
-    <div class="q"><span class="ql">Retiros desde los linderos <span class="hint">(opcional) espacio libre que dejas entre la casa y cada lindero. Según el Código Civil, no se permiten ventanas en muros construidos sobre el lindero; con cualquier retiro ya puedes abrir ventanas hacia ese lado.</span></span></div>
+    <div class="q"><span class="ql">Retiros desde los linderos <span class="hint">(opcional) espacio libre que dejas entre la casa y cada lindero. Según el Código Civil, no se permiten ventanas en muros construidos sobre los linderos laterales o del fondo; con cualquier retiro ya puedes abrir ventanas hacia ese lado. Hacia el frente (la calle) siempre se permiten ventanas y el acceso, aunque no dejes retiro.</span></span></div>
     <div class="row" id="retiros">
       <div class="q" style="margin-top:6px"><label for="retIz">Izquierdo</label><div class="unit"><input id="retIz" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
       <div class="q" style="margin-top:6px"><label for="retDe">Derecho</label><div class="unit"><input id="retDe" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
@@ -496,7 +496,7 @@ function layout(mode,ar={},adj={},geom=false){
   for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
   for(const m of rooms){if(['pila','bodega'].includes(m.k)){m.wf=null;continue}
     const backOpen=lastIn[m.x]===m&&(D-rf-(m.y+m.h)*0.5)>0.01,sideOpen=m.sd==='R'?clearR>0.01:rl>0.01;
-    m.wf=m.y===y0?'front':backOpen?'back':sideOpen?'side':m.k==='bano'?null:'col'}
+    m.wf=m.y===y0?'front'/* street front: windows and access always allowed, even with no front setback */:backOpen?'back':sideOpen?'side':m.k==='bano'?null:'col'}
   L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
   L.fits=L.width<=F-rl-rr+1e-9&&L.depth<=D-rf-rb+1e-9;L.colBad=rooms.some(m=>m.wf==='col');L.valid=L.fits&&!L.colBad;
   if(geom)return L;
