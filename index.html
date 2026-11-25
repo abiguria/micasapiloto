@@ -109,6 +109,15 @@ details summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;alig
 .ex{font-size:12px;color:var(--mute)}
 .pro button{margin-top:auto}
 input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
+/* inputs (left) warm paper, outputs (right) cool blueprint */
+#form section{background:light-dark(#fbf6ec,#1b2234);border-color:light-dark(#e8dcc5,#34405a)}
+#side section{background:light-dark(#f2f6fc,#13233d);border-color:light-dark(#cddaee,#2c4268)}
+#form input,#form textarea,#form .chip:not([aria-checked=true]){background:light-dark(#ffffff,#0f1a2e)}
+.colhead{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:15px;font-weight:800}
+.colhead i{width:14px;height:14px;border-radius:4px;flex:none}
+#form .colhead i{background:light-dark(#e8dcc5,#34405a);border:1.5px solid light-dark(#c9b48a,#5a6a8a)}
+#side .colhead i{background:light-dark(#cddaee,#2c4268);border:1.5px solid light-dark(#8ea8d4,#5f86d6)}
+.colhead span{font-weight:400;color:var(--mute);font-size:13px}
 @media(max-width:600px){section{padding:18px}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -123,6 +132,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 </header>
 <main>
 <div id="form">
+  <p class="colhead"><i></i>Lo que nos cuentas <span>· tus respuestas</span></p>
   <section>
     <h2><span class="n">1</span>Cuéntanos tu casa</h2>
     <p class="sub">Escribe o habla con tus palabras: quiénes viven, qué espacios necesitas, cómo es el terreno y cuánto tienes. La IA llena el formulario y tú lo revisas.</p>
@@ -182,6 +192,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 </div>
 
 <div id="side">
+  <p class="colhead"><i></i>Lo que te devolvemos <span>· plano, presupuesto y opciones</span></p>
   <section>
     <h2>Elige una distribución</h2>
     <p class="sub">Cada opción acomoda los mismos espacios de otra forma. Toca una para ver su planta y su precio.</p>
