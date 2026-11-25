@@ -51,6 +51,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.45}
 select{display:none}
 :focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 18px}
+#retiros{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 .unit{position:relative}.unit input{padding-right:46px}.unit span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--mute);font-weight:600;pointer-events:none}
 button{font:inherit;font-weight:700;min-height:46px;padding:10px 18px;border-radius:12px;border:2px solid var(--blue);background:var(--blue);color:var(--btn);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 button.ghost{background:transparent;color:var(--blue)}
@@ -207,6 +208,13 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div class="row">
       <div class="q"><label for="frente">Frente del terreno</label><div class="unit"><input id="frente" type="number" min="4" step="0.5" value="8" inputmode="decimal"><span>m</span></div></div>
       <div class="q"><label for="fondo">Fondo del terreno</label><div class="unit"><input id="fondo" type="number" min="4" step="0.5" value="15" inputmode="decimal"><span>m</span></div></div>
+    </div>
+    <div class="q"><span class="ql">Retiros desde los linderos <span class="hint">(opcional) espacio libre que dejas entre la casa y cada lindero. Para poner ventanas hacia un lado se necesita al menos 1 m de retiro.</span></span></div>
+    <div class="row" id="retiros">
+      <div class="q" style="margin-top:6px"><label for="retIz">Izquierdo</label><div class="unit"><input id="retIz" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retDe">Derecho</label><div class="unit"><input id="retDe" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retFr">Frontal (calle)</label><div class="unit"><input id="retFr" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retFo">Posterior (fondo)</label><div class="unit"><input id="retFo" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
     </div>
     <div class="q"><label for="pendiente">Pendiente del terreno</label><select id="pendiente"><option value="plano">Plano</option><option value="ligera">Ligera</option><option value="fuerte">Fuerte</option></select></div>
     <div class="q"><label for="barranco">¿Está cerca de un barranco, río o talud?</label><select id="barranco"><option value="no">No</option><option value="si">Sí</option></select></div>
@@ -402,7 +410,7 @@ let P={};
 try{P=JSON.parse(localStorage.getItem('mihaus_precios')||'{}')}catch(e){P={}}
 const pr=k=>(P[k]!=null&&!isNaN(P[k]))?+P[k]:PDEF[k].p;
 
-const FIELDS=['nombre','lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
+const FIELDS=['nombre','lugar','retIz','retDe','retFr','retFo','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
 try{localStorage.removeItem('mihaus_form');localStorage.removeItem('mihaus_form2')}catch(e){}
 // every reload starts clean, even in browsers that remember typed values
 for(const el of document.querySelectorAll('.inp input,.inp textarea,.inp select')){
@@ -484,11 +492,13 @@ function layout(mode,ar={},adj={},geom=false){
     const ox=c.own.x===pasX+PW?pasX+PW:pasX;for(let j=0;j<c.h;j++)seg.delete(`v${ox},${c.y+j}`)}
   const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,nook,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
   // window wall: front or back if open, outer side if there is 1 m of clearance, otherwise toward the neighbour (colindancia)
-  const clear=F-L.width,lastIn={};
+  const rl=num('retIz'),rr=num('retDe'),rf=num('retFr'),rb=num('retFo'),clearR=F-rl-L.width,lastIn={};L.rl=rl;L.rf=rf;L.rr=rr;L.rb=rb;
   for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
-  for(const m of rooms)m.wf=['pila','bodega'].includes(m.k)?null:m.y===y0?'front':lastIn[m.x]===m?'back':(m.sd==='R'&&clear>=1)?'side':'col';
+  for(const m of rooms){if(['pila','bodega'].includes(m.k)){m.wf=null;continue}
+    const backOpen=lastIn[m.x]===m&&(D-rf-(m.y+m.h)*0.5)>=1,sideOpen=m.sd==='R'?clearR>=1:rl>=1;
+    m.wf=m.y===y0?'front':backOpen?'back':sideOpen?'side':m.k==='bano'?null:'col'}
   L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
-  L.fits=L.width<=F&&L.depth<=D;
+  L.fits=L.width<=F-rl-rr+1e-9&&L.depth<=D-rf-rb+1e-9;L.colBad=rooms.some(m=>m.wf==='col');L.valid=L.fits&&!L.colBad;
   if(geom)return L;
   return Object.assign(L,quant(L));
 }
@@ -519,18 +529,20 @@ function quant(L){
 
 // the lot is the main constraint: an option is enabled only if the whole programme still fits in some distribution
 const FITKEYS=['dormYa','dormDesp','banos','comedor','sala','pila','o_local','o_bodega','o_corredor','o_familiar'];
-function bestFit(){let best=null,small=null;
+function bestFit(){let best=null,small=null,winOnly=false;
   for(const [m] of VARS)for(const [,ar] of ARR){const L=layout(m,ar,{},true);if(L.na)continue;
     if(!small||L.width*L.depth<small.width*small.depth)small=L;
-    if(L.fits&&(!best||L.depth<best.depth))best=L}
-  return {best,small}}
+    if(L.fits&&L.colBad)winOnly=true;
+    if(L.valid&&(!best||L.depth<best.depth))best=L}
+  return {best,small,winOnly}}
 function constrain(){
   if(!items('central').length){const F=num('frente')||8,D=num('fondo')||15;
     $('fitNote').innerHTML=`<div class="okbox">Tu casa empieza vacía. Agrega espacios uno a uno; te avisaremos si dejan de caber en tu terreno de ${F} × ${D} m.</div>`;$('fitNote2').innerHTML='';
     for(const k of FITKEYS)for(const b of $(k)._g.children){b.disabled=false;b.title='';b.classList.remove('helps')}return}
-  const {best,small}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
+  const {best,small,winOnly}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
   $('fitNote').innerHTML=best?`<div class="okbox">✓ Tu programa cabe en tu terreno: ocupa ${fm(best.width)} × ${fm(best.depth)} m de ${fm(F)} × ${fm(D)} m.</div>`:
-    `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m en un nivel. Las opciones con borde verde punteado ayudan a que quepa.</div>`;
+    winOnly?`<div class="flag"><b>✗ Cabe en tu terreno, pero algún dormitorio, cocina o sala quedaría con su única ventana hacia el vecino.</b> No se permiten ventanas en la colindancia: deja un retiro lateral o posterior de al menos 1 m en el paso 2, o cambia tus espacios. <button type="button" class="ghost" onclick="location.hash='terreno'">Ajustar retiros</button></div>`:
+    `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m${num('retIz')+num('retDe')+num('retFr')+num('retFo')>0?' con los retiros que pusiste':''}.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m de área construible en un nivel. Las opciones con borde verde punteado ayudan a que quepa.</div>`;
   const area=x=>x?x.width*x.depth:1e9,curA=area(small);
   for(const k of FITKEYS){const sel=$(k),cur=sel.value;
     for(const b of sel._g.children){b.classList.remove('helps');if(b.dataset.v===cur){b.disabled=false;b.title='';continue}
@@ -559,21 +571,26 @@ function build(){
   for(;lvl<ADJ.length;lvl++){opts={};fitAny={};const adj=ADJ[lvl][0];
     for(const [m] of VARS){const seen=new Set(),list=[];
       for(const [n,ar] of ARR){const L=layout(m,ar,adj);if(L.na){opts[m]={na:L.na};break}if(seen.has(L.sig))continue;seen.add(L.sig);L.an=n;L.adj=ADJ[lvl][1];list.push(L)}
-      if(opts[m])continue;const fit=list.filter(L=>L.fits);fitAny[m]=fit.length>0;opts[m]={list:fit.length?fit:list}}
+      if(opts[m])continue;const fit=list.filter(L=>L.valid);fitAny[m]=fit.length>0;opts[m]={list:fit}}
     if(Object.values(fitAny).some(x=>x))break}
   if(lvl===ADJ.length)lvl=ADJ.length-1;
   const someFit=Object.values(fitAny).some(x=>x);
-  const show=m=>opts[m].list&&(!someFit||fitAny[m]);
-  if(opts.compacta.list&&['central','lateral'].some(k=>opts[k].list&&opts[k].list[0].sig===opts.compacta.list[0].sig))opts.compacta={na:'Igual'};
+  if(!someFit){
+    last={mode:sel,mods:[],seg:new Map(),F:num('frente')||8,D:num('fondo')||15,width:0,depth:0,area:0,circ:0,fits:false,valid:false,an:'',adj:'',Q3:{1:{},2:{},3:{}},cost:{1:0,2:0,3:0},tot:0,empty:true,noFit:true,rl:num('retIz'),rf:num('retFr'),rr:num('retDe'),rb:num('retFo')};
+    $('vars').innerHTML='';$('varNote').innerHTML='<b>No hay una distribución que quepa dentro de tu terreno con ventanas permitidas.</b> Revisa el aviso del paso 3: quita espacios o ajusta los retiros.';
+    $('fWin').innerHTML=WOPT.map(([k,t,d])=>`<button type="button" class="chip" role="radio" aria-checked="${k===winSel}" data-w="${k}">${t} <span class="hint">${d}</span></button>`).join('');
+    $('arrLbl').textContent='';$('prevA').disabled=$('nextA').disabled=true;
+    drawPlan();flags();budget();supply();upgrades();mat();if(typeof dlState==='function')dlState();return}
+  const show=m=>opts[m].list&&opts[m].list.length>0;
+  if(opts.compacta.list&&opts.compacta.list.length&&['central','lateral'].some(k=>opts[k].list&&opts[k].list.length&&opts[k].list[0].sig===opts.compacta.list[0].sig))opts.compacta={na:'Igual'};
   if(!VARS.some(([m])=>m===sel&&show(m))){sel=VARS.find(([m])=>show(m))[0];ai=0}
   ai=Math.min(ai,opts[sel].list.length-1);
   $('vars').innerHTML=VARS.filter(([m])=>show(m)).map(([m,n,d])=>{const L=opts[m].list[m===sel?ai:0];
     return `<button type="button" class="var" data-m="${m}" aria-pressed="${m===sel}"><b>${n}</b><small>${lvl>0?'Ajustada a tu terreno':d}</small><strong>${Q(L.tot)}</strong><small>${Math.round(L.area)} m² · pasillo ${Math.round(L.circ/L.area*100)}%${L.fits?'':' · no cabe'}</small></button>`}).join('');
   const hid=VARS.filter(([m])=>!show(m)&&opts[m].list).map(x=>x[1].toLowerCase());
   $('varNote').innerHTML='';const vn=[];
-  if(!someFit)vn.push('<b>Tus espacios no caben en el terreno en un nivel, ni siquiera ajustados.</b> Reduce espacios o consulta a un especialista.');
-  else if(lvl>0)vn.push(`<b>Tus espacios no caben tal como los pediste.</b> Te mostramos opciones ajustadas: ${ADJ[lvl][1]}.`);
-  if(someFit&&hid.length)vn.push(`Ocultamos ${hid.join(' y ')} porque no cabe en tu terreno.`);
+  if(lvl>0)vn.push(`<b>Tus espacios no caben tal como los pediste.</b> Te mostramos opciones ajustadas: ${ADJ[lvl][1]}.`);
+  if(someFit&&hid.length)vn.push(`Ocultamos ${hid.join(' y ')} porque no cabe en tu terreno o dejaría ventanas hacia el vecino.`);
   $('varNote').innerHTML=vn.join(' ');
   $('fWin').innerHTML=WOPT.map(([k,t,d])=>`<button type="button" class="chip" role="radio" aria-checked="${k===winSel}" data-w="${k}">${t} <span class="hint">${d}</span></button>`).join('');
   last=opts[sel].list[ai];
@@ -610,14 +627,15 @@ function furn(m){
 
 function drawPlan(){
   const L=last,svg=$('plan'),W=svg.clientWidth||600,Hh=svg.clientHeight||480;
-  const LW=Math.max(L.F,L.width),LD=Math.max(L.D,L.depth),pad=34,s=Math.min((W-pad*2)/LW,(Hh-pad*2)/LD);
-  const ox=(W-LW*s)/2,oy=(Hh-LD*s)/2,Y=m=>oy+(LD-m)*s,X=m=>ox+m*s;
+  const rl=L.rl||0,rf=L.rf||0,LW=Math.max(L.F,L.width+rl),LD=Math.max(L.D,L.depth+rf),pad=34,s=Math.min((W-pad*2)/LW,(Hh-pad*2)/LD);
+  const ox=(W-LW*s)/2,oy=(Hh-LD*s)/2,Yl=m=>oy+(LD-m)*s,Y=m=>oy+(LD-(m+rf))*s,X=m=>ox+(m+rl)*s;
   const TC={clos:'--serv',pilan:'--serv',dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
   const fc=m=>`var(${TC[m.k]})`,op={1:1,2:0.82,3:0.6},tc={1:'var(--ink)',2:'var(--ink)',3:'var(--ink)'};
   let base=`<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--ink)" stroke-opacity=".28" stroke-width="2"/></pattern></defs>`;
-  base+=`<rect x="${ox}" y="${Y(L.D)}" width="${L.F*s}" height="${L.D*s}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/>`;
-  base+=`<text x="${ox+L.F*s/2}" y="${Y(0)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">Calle · frente ${L.F} m</text>`;
-  base+=`<text x="${ox-10}" y="${Y(L.D/2)}" text-anchor="middle" font-size="12" fill="var(--mute)" transform="rotate(-90 ${ox-10} ${Y(L.D/2)})">Fondo ${L.D} m</text>`;
+  base+=`<rect x="${ox}" y="${Yl(L.D)}" width="${L.F*s}" height="${L.D*s}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/>`;
+  {const rr=L.rr||0,rb=L.rb||0;if(rl+rr+rf+rb>0)base+=`<rect x="${ox+rl*s}" y="${Yl(L.D-rb)}" width="${Math.max(0,L.F-rl-rr)*s}" height="${Math.max(0,L.D-rf-rb)*s}" fill="none" stroke="var(--ok)" stroke-width="1.2" stroke-dasharray="3 4"/>`}
+  base+=`<text x="${ox+L.F*s/2}" y="${Yl(0)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">Calle · frente ${L.F} m</text>`;
+  base+=`<text x="${ox-10}" y="${Yl(L.D/2)}" text-anchor="middle" font-size="12" fill="var(--mute)" transform="rotate(-90 ${ox-10} ${Yl(L.D/2)})">Fondo ${L.D} m</text>`;
   let fill='',fur='',walls='',open='',labels='';
   const occ=new Set();
   for(const m of L.mods){const x=X(m.x*0.5),yy=Y((m.y+m.h)*0.5),w=m.w*0.5*s,hh=m.h*0.5*s;
@@ -667,7 +685,7 @@ function drawPlan(){
   if(L.depth>L.D)over+=`<rect x="${X(0)}" y="${Y(L.depth)}" width="${L.width*s}" height="${(L.depth-L.D)*s}" fill="var(--red)" fill-opacity=".28"/>`;
   if(L.width>L.F)over+=`<rect x="${X(L.F)}" y="${Y(L.depth)}" width="${(L.width-L.F)*s}" height="${L.depth*s}" fill="var(--red)" fill-opacity=".28"/>`;
   if(over)over+=`<text x="${X(Math.min(L.width,L.F)/2)}" y="${Y(L.D)-6}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--red)">Fuera del terreno</text>`;
-  if(L.empty){svg.innerHTML=base+`<text x="${ox+L.F*s/2}" y="${Y(L.D/2)}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--mute)">Tu terreno está listo</text><text x="${ox+L.F*s/2}" y="${Y(L.D/2)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">Agrega espacios en el paso 3</text>`;L.ov='';if(typeof draw3D==='function')draw3D();$('planSub').textContent=`Terreno de ${L.F} × ${L.D} m (${L.F*L.D} m²). Todavía no hay espacios.`;return}
+  if(L.empty){svg.innerHTML=base+`<text x="${ox+L.F*s/2}" y="${Yl(L.D/2)}" text-anchor="middle" font-size="14" font-weight="700" fill="${L.noFit?'var(--red)':'var(--mute)'}">${L.noFit?'Tu programa no cabe aquí':'Tu terreno está listo'}</text><text x="${ox+L.F*s/2}" y="${Yl(L.D/2)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">${L.noFit?'Ajusta espacios o retiros':'Agrega espacios en el paso 3'}</text>`;L.ov='';if(typeof draw3D==='function')draw3D();$('planSub').textContent=L.noFit?`Terreno de ${L.F} × ${L.D} m. Lo que pediste no cabe dentro del área construible con ventanas permitidas.`:`Terreno de ${L.F} × ${L.D} m (${L.F*L.D} m²). Todavía no hay espacios.`;return}
   svg.innerHTML=base+fill+fur+walls+open+labels+over;
   if(typeof draw3D==='function')draw3D();
   const rm=L.mods.filter(m=>m.k!=='pas'&&m.k!=='cor'),nd=rm.length+1+rm.filter(m=>m.k==='local').length,wn=rm.filter(m=>m.wf);
@@ -685,9 +703,11 @@ function flags(){
   if(v('barranco')==='si')f.push('Está cerca de barranco, río o talud.');
   if(v('relleno')!=='no')f.push(v('relleno')==='si'?'El terreno es relleno.':'No se sabe si el terreno es relleno.');
   if(v('tipo')==='ampliacion')f.push('Es una ampliación sobre una construcción existente.');
-  if(!last.fits)f.push('Esta distribución no cabe en el terreno en un nivel. Prueba otra opción o deja espacios para después; un segundo nivel necesita cálculo estructural de un especialista.');
+
   if(v('pozo')==='si'||v('encharca')==='si')f.push('Hay pozo cerca o el agua se empoza en el terreno: la ubicación del baño y su sistema la define un especialista.');
   const nc=last.mods.filter(m=>m.wf==='col').length;
+  const nb=last.mods.filter(m=>m.k==='bano'&&!m.wf).length;
+  if(nb)r.push(`${nb>1?'Los baños no tienen':'El baño no tiene'} pared libre para ventana (no se permiten hacia el vecino): necesita ducto o extractor de ventilación.`);
   if(nc)r.push(`${nc} espacio${nc>1?'s':''} solo tiene${nc>1?'n':''} pared hacia el vecino (ventana punteada). Un especialista puede proponer un patio de luz o una ventana alta; prueba también otra distribución.`);
   if(v('otroTxt').trim())r.push('Pediste un espacio adicional que revisará un especialista.');
   blocked=f.length>0;
@@ -699,7 +719,7 @@ function flags(){
 }
 
 function budget(){
-  if(last.empty){$('total').textContent='Aún no hay espacios';$('totalNote').textContent='Cuando agregues espacios verás aquí cuánto cuestan los materiales.';$('sbar').innerHTML='';$('stages').innerHTML='';$('plazo').textContent='';return}
+  if(last.empty){$('total').textContent=last.noFit?'No cabe en tu terreno':'Aún no hay espacios';$('totalNote').textContent=last.noFit?'Ajusta tus espacios o los retiros para ver el presupuesto.':'Cuando agregues espacios verás aquí cuánto cuestan los materiales.';$('sbar').innerHTML='';$('stages').innerHTML='';$('plazo').textContent='';return}
   const {cost,tot}=last;
   {const qf=n=>'Q'+Math.round(n).toLocaleString('es-GT'),uf=n=>'US$'+Math.round(n/RATE).toLocaleString('en-US');
    $('total').innerHTML='';$('total').append(`${qf(tot*0.85)} – ${qf(tot*1.15)}`);
@@ -819,7 +839,7 @@ async function makePDF(){
 }
 let dlApi=null;
 const dlState=()=>{const ok=$('entiendo').checked,nm=v('nombre').trim().length>=3,hp=!last.empty;$('dl').disabled=!(ok&&nm&&hp);
-  $('dlNote').textContent=!hp?'Agrega espacios en el paso 3 para generar tu presupuesto.':!nm?'Escribe tu nombre completo en el paso 1 para descargar.':!ok?'Marca la casilla para descargar.':''};
+  $('dlNote').textContent=!hp?(last.noFit?'Tu programa no cabe en el terreno; ajústalo para generar tu presupuesto.':'Agrega espacios en el paso 3 para generar tu presupuesto.'):!nm?'Escribe tu nombre completo en el paso 1 para descargar.':!ok?'Marca la casilla para descargar.':''};
 $('entiendo').addEventListener('change',dlState);$('nombre').addEventListener('input',dlState);
 $('dl').addEventListener('click',async()=>{
   if(!window.jspdf){$('dlNote').textContent='No se pudo preparar el PDF en este navegador.';return}
@@ -963,7 +983,7 @@ function tex3D(){
 }
 function draw3D(){
   if(!T3||view!=='3d')return;const {group,cam,ctl}=T3,L=last,TX=tex3D();
-  while(group.children.length){const c=group.children.pop();c.geometry&&c.geometry.dispose();if(c.material&&!c.material.shared)c.material.dispose()}
+  group.traverse(c=>{if(c.geometry)c.geometry.dispose();if(c.material&&!c.material.shared)c.material.dispose()});while(group.children.length)group.remove(group.children[0]);let tgt=group;
   const tint={dorm:0x9cc0ec,dorm1:0x9cc0ec,bano:0x8fd3c8,cocina:0xf3c77f,comedor:0xf3c77f,salacom:0xf3c77f,sala:0xf2ab93,local:0xc7aeea,pila:0xcfc9bc,pilan:0xcfc9bc,bodega:0xcfc9bc,clos:0xcfc9bc,pas:0xebe6dc,cor:0xd9d3c8};
   const mix=c=>new THREE.Color(0xffffff).lerp(new THREE.Color(c),0.35);
   const M=(o)=>{const m=new THREE.MeshLambertMaterial(o);return m};
@@ -972,12 +992,14 @@ function draw3D(){
     door:shared(M({color:0x5d6b7a})),glass:shared(M({color:0x9fd0ff,transparent:true,opacity:.45})),frame:shared(M({color:0x3b3f46})),grass:shared(M({map:TX.grass}))};
   const MT=T3.mats;
   const uvs=(g,su,sv)=>{const a=g.attributes.uv;for(let i=0;i<a.count;i++)a.setXY(i,a.getX(i)*su,a.getY(i)*sv);a.needsUpdate=true;return g};
-  const box=(w,h,d,x,y,z,m,su=1,sv=1)=>{const g=uvs(new THREE.BoxGeometry(w,h,d),su,sv),me=new THREE.Mesh(g,m);me.position.set(x,y,z);group.add(me);return me};
+  const box=(w,h,d,x,y,z,m,su=1,sv=1)=>{const g=uvs(new THREE.BoxGeometry(w,h,d),su,sv),me=new THREE.Mesh(g,m);me.position.set(x,y,z);tgt.add(me);return me};
   const H=2.6,TK=0.15,F=L.F,D=L.D,SOL=2.4;
   // ground and lot line
   const gp=new THREE.Mesh(uvs(new THREE.PlaneGeometry(F,D),F/2,D/2),MT.grass);gp.rotation.x=-Math.PI/2;gp.position.set(F/2,0,-D/2);group.add(gp);
   const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(F,0.03,D)),new THREE.LineBasicMaterial({color:0xc8432b}));edge.position.set(F/2,0.01,-D/2);group.add(edge);
+  const HG=new THREE.Group();HG.position.set(L.rl||0,0,-(L.rf||0));group.add(HG);
   if(L.empty){T3.framed='';cam.position.set(F/2+F,Math.max(F,D),D*0.6);ctl.target.set(F/2,0,-D/2);return}
+  tgt=HG;
   // concrete floor slab, lightly tinted by space type
   for(const m of L.mods){const w=m.w*0.5,d=m.h*0.5;box(w,0.12,d,m.x*0.5+w/2,0.06,-(m.y*0.5+d/2),M({map:TX.conc,color:mix(tint[m.k]||0xdddddd)}),w,d)}
   // openings
@@ -1003,13 +1025,16 @@ function draw3D(){
       else{box(0.03,2.1-lo,0.5,a*0.5,(lo+2.1)/2,-(b*0.5+0.25),MT.glass);box(0.06,0.05,0.5,a*0.5,lo,-(b*0.5+0.25),MT.frame);box(0.06,0.05,0.5,a*0.5,2.1,-(b*0.5+0.25),MT.frame)}}
     else piece(0,H)}
   // gable roof of corrugated sheet, ridge along the longer side, 27% slope, 0.4 m overhang
-  {const Wb=L.width,Db=L.depth,ov=0.4,sl=0.27,He=H+0.05,alongZ=Db>=Wb,span=alongZ?Wb:Db,Hr=He+span/2*sl,ye=He-ov*sl,len=alongZ?Db:Wb;
+  {const Wb=L.width,Db=L.depth,sl=0.27,He=H+0.05,alongZ=Db>=Wb,span=alongZ?Wb:Db,Hr=He+span/2*sl,len=alongZ?Db:Wb;
+   // eaves stay inside the property: 0.40 m overhang, reduced where the setback is smaller
+   const oL=Math.min(0.4,L.rl||0),oR=Math.min(0.4,Math.max(0,L.F-(L.rl||0)-Wb)),oF=Math.min(0.4,L.rf||0),oB=Math.min(0.4,Math.max(0,L.D-(L.rf||0)-Db));
+   const [oa0,oa1,ob0,ob1]=alongZ?[oL,oR,oF,oB]:[oF,oB,oL,oR],ye0=He-oa0*sl,ye1=He-oa1*sl;
    const toW=([a,y,b])=>alongZ?[a,y,b]:[-b,y,-a];
    const mk=(loc,uv,idx,m)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(loc.map(toW).flat(),3));
-     g.setAttribute('uv',new THREE.Float32BufferAttribute(uv.flat(),2));g.setIndex(idx);g.computeVertexNormals();const me=new THREE.Mesh(g,m);group.add(me);
-     const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x5b6577}));group.add(e)};
-   const A0=-ov,A1=span+ov,Am=span/2,B0=ov,B1=-(len+ov),slopeL=Math.hypot(Am-A0,Hr-ye);
-   const rp=[[A0,ye,B0],[Am,Hr,B0],[Am,Hr,B1],[A0,ye,B1],[A1,ye,B0],[A1,ye,B1]];
+     g.setAttribute('uv',new THREE.Float32BufferAttribute(uv.flat(),2));g.setIndex(idx);g.computeVertexNormals();const me=new THREE.Mesh(g,m);tgt.add(me);
+     const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x5b6577}));tgt.add(e)};
+   const A0=-oa0,A1=span+oa1,Am=span/2,B0=ob0,B1=-(len+ob1),slopeL=Math.hypot(Am-A0,Hr-ye0);
+   const rp=[[A0,ye0,B0],[Am,Hr,B0],[Am,Hr,B1],[A0,ye0,B1],[A1,ye1,B0],[A1,ye1,B1]];
    const ru=rp.map(([a,,b],i)=>[b/0.6,(i===1||i===2)?slopeL:0]);
    mk(rp,ru,[0,1,2,0,2,3,1,4,5,1,5,2],MT.lam);
    const gp2=[[0,He,0],[span,He,0],[Am,Hr,0],[0,He,-len],[span,He,-len],[Am,Hr,-len]];
@@ -1017,10 +1042,10 @@ function draw3D(){
    const ck=L.mods.find(m=>m.k==='cocina');
    if(ck&&v('cocina')==='lena'){const lx=ck.sd==='L'?0.38:3-0.38,wx=ck.x*0.5+lx,wz=-(ck.y*0.5+1.1);
      const across=alongZ?wx:-wz,yr=He+(span/2-Math.abs(across-span/2))*sl,top=yr+0.8;
-     const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,top-0.9,16),MT.frame);pipe.position.set(wx,(top+0.9)/2,wz);group.add(pipe);
-     const cap=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.18,16),MT.frame);cap.position.set(wx,top+0.16,wz);group.add(cap);
+     const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,top-0.9,16),MT.frame);pipe.position.set(wx,(top+0.9)/2,wz);tgt.add(pipe);
+     const cap=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.18,16),MT.frame);cap.position.set(wx,top+0.16,wz);tgt.add(cap);
      box(0.6,0.9,0.6,wx,0.45,wz,MT.conc)}}
-  const key=L.sig+F+D;if(T3.framed!==key){T3.framed=key;const cx=L.width/2,cz=-L.depth/2,r=Math.max(L.width,L.depth,6);
+  const key=L.sig+F+D;if(T3.framed!==key){T3.framed=key;const cx=L.width/2+(L.rl||0),cz=-L.depth/2-(L.rf||0),r=Math.max(L.width,L.depth,6);
     ctl.target.set(cx,1,cz);cam.position.set(cx+r*0.75,r*1.7,cz+r*1.45);ctl.update()}
 }
 $('viewSeg').addEventListener('click',async e=>{const b=e.target.closest('[data-v]');if(!b)return;view=b.dataset.v;
