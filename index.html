@@ -288,7 +288,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div style="margin:0 0 14px"><span class="ql">Tamaño de ventanas</span><div class="chips" id="fWin"></div><p class="note" style="margin:6px 0 0">Ventanas más grandes dan más luz y ventilación, pero cuestan más. Las puertas abren hacia el pasillo.</p></div>
     <div class="iter"><button type="button" id="prevA" class="ghost" aria-label="Distribución anterior">◀</button><span id="arrLbl"></span><button type="button" id="nextA" aria-label="Otra distribución">Otra distribución ▶</button></div>
     <div class="vtog"><span class="seg3" id="viewSeg"><button type="button" data-v="2d" aria-pressed="true">Plano 2D</button><button type="button" data-v="3d" aria-pressed="false">Vista 3D</button></span>
-      <label class="check" id="roofBox" hidden style="margin:0"><input type="checkbox" id="roof3d"><span>Mostrar techo</span></label><span class="note" id="v3note"></span></div>
+<span class="note" id="v3note"></span></div>
     <div class="fig" id="fig"><div id="v3" hidden></div><svg id="plan" role="img" aria-label="Diagrama ilustrativo de la distribución"></svg></div>
     <p class="cap"><b>Diagrama ilustrativo.</b> Camas, baño y cocina solo dan idea de escala. No es un plano constructivo.</p>
     <div class="legend"><span><i style="background:var(--dorm)"></i>Dormitorios</span><span><i style="background:var(--bano)"></i>Baños</span><span><i style="background:var(--coc)"></i>Cocina y comedor</span><span><i style="background:var(--sala)"></i>Sala</span><span><i style="background:var(--loc)"></i>Local</span><span><i style="background:var(--serv)"></i>Pila y bodega</span><span><i style="background:var(--pas)"></i>Pasillo</span></div>
@@ -977,16 +977,27 @@ function draw3D(){
     else if(o==='win'||o==='winS'){const lo=o==='winS'?1.6:0.9;piece(0,lo);piece(2.1,H);
       if(t==='h')boxm(0.5,2.1-lo,0.04,a*0.5+0.25,(lo+2.1)/2,-(b*0.5),glass);else boxm(0.04,2.1-lo,0.5,a*0.5,(lo+2.1)/2,-(b*0.5+0.25),glass)}
     else piece(0,H)}
-  if($('roof3d').checked){const r=boxm(L.width+0.6,0.06,L.depth+0.6,L.width/2,H+0.25,-L.depth/2,mat(0xa8b4c4,0.85));r.rotation.x=0.05}
+  // gable roof (dos aguas) of corrugated sheet over the footprint, ridge along the longer side, 27% slope, 0.4 m overhang
+  {const Wb=L.width,Db=L.depth,ov=0.4,sl=0.27,He=H+0.05,alongZ=Db>=Wb,span=alongZ?Wb:Db,Hr=He+span/2*sl,ye=He-ov*sl;
+   const P=(a,y,b)=>alongZ?[a,y,b]:[b,y,a];// a = across the slope, b = along the ridge (world: x/z)
+   const A0=-ov,A1=span+ov,Am=span/2,B0=ov,B1=-((alongZ?Db:Wb)+ov);
+   const mk=(pts,idx,c,o)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts.flat(),3));g.setIndex(idx);g.computeVertexNormals();
+     const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide,transparent:o<1,opacity:o}));group.add(m);
+     const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x5b6577}));group.add(e);return m};
+   const toW=([a,y,b])=>alongZ?[a,y,b]:[ -b,y,-a];
+   const q=(p)=>p.map(toW);
+   const roof=q([[A0,ye,B0],[Am,Hr,B0],[Am,Hr,B1],[A0,ye,B1],[A1,ye,B0],[A1,ye,B1]]);
+   mk(roof,[0,1,2,0,2,3,1,4,5,1,5,2],0x9aa7b8,1);
+   const Bf=0,Bb=-(alongZ?Db:Wb);
+   mk(q([[0,He,Bf],[span,He,Bf],[Am,Hr,Bf],[0,He,Bb],[span,He,Bb],[Am,Hr,Bb]]),[0,1,2,3,4,5],0xf1ece2,1)}
   const key=L.sig+F+D;if(T3.framed!==key){T3.framed=key;const cx=L.width/2,cz=-L.depth/2,r=Math.max(L.width,L.depth,6);
     ctl.target.set(cx,1,cz);cam.position.set(cx+r*0.75,r*1.7,cz+r*1.45);ctl.update()}
 }
 $('viewSeg').addEventListener('click',async e=>{const b=e.target.closest('[data-v]');if(!b)return;view=b.dataset.v;
   for(const x of $('viewSeg').children)x.setAttribute('aria-pressed',x.dataset.v===view);
-  const is3=view==='3d';$('v3').hidden=!is3;$('plan').style.visibility=is3?'hidden':'';$('roofBox').hidden=!is3;
+  const is3=view==='3d';$('v3').hidden=!is3;$('plan').style.visibility=is3?'hidden':'';
   $('v3note').textContent=is3?'Arrastra para girar, pellizca o usa la rueda para acercar. Es ilustrativa.':'';
   if(is3){try{await ensure3D();draw3D()}catch(x){$('v3note').textContent='No se pudo cargar la vista 3D en este navegador.'}}});
-$('roof3d').addEventListener('change',draw3D);
 
 // ---------- Marketplace (simulated) ----------
 const TIPOS={arq:'Arquitectura',ing:'Ingeniería estructural',suelo:'Suelos y saneamiento',sup:'Supervisión de obra'};
