@@ -21,6 +21,7 @@
 --e1:light-dark(#1d3a6e,#5f86d6);--e2:light-dark(#6f8fc4,#3a5a94);--e3:light-dark(#d3ddef,#26375a)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Archivo,system-ui,sans-serif;overflow-x:clip}
 header{background:var(--blue);color:var(--btn);padding:22px max(5vw,16px) 26px}
 header h1{margin:0;font-size:clamp(30px,4vw,46px);line-height:1.05;font-weight:800;text-wrap:balance}
@@ -134,12 +135,18 @@ details summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;alig
 .pro button{margin-top:auto}
 input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 /* inputs (left) warm paper, outputs (right) cool blueprint */
-#form section{background:light-dark(#fbf6ec,#1b2234);border-color:light-dark(#e8dcc5,#34405a)}
+.inp section{background:light-dark(#fbf6ec,#1b2234);border-color:light-dark(#e8dcc5,#34405a)}
 #side section{background:light-dark(#f2f6fc,#13233d);border-color:light-dark(#cddaee,#2c4268)}
-#form input,#form textarea,#form .chip:not([aria-checked=true]){background:light-dark(#ffffff,#0f1a2e)}
+.inp input,.inp textarea,.inp .chip:not([aria-checked=true]){background:light-dark(#ffffff,#0f1a2e)}
+.more{grid-column:1/-1}
+#p1{max-width:820px}
+#p1,#p2{}
+@media(min-width:980px){#p1{grid-template-columns:minmax(0,1fr)}}
+.more summary{list-style:none}.more summary::-webkit-details-marker{display:none}
+.more summary::after{content:'＋';margin-left:auto;font-size:22px;color:var(--blue)}.more details[open] summary::after{content:'－'}
 .colhead{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:15px;font-weight:800}
 .colhead i{width:14px;height:14px;border-radius:4px;flex:none}
-#form .colhead i{background:light-dark(#e8dcc5,#34405a);border:1.5px solid light-dark(#c9b48a,#5a6a8a)}
+.inp .colhead i{background:light-dark(#e8dcc5,#34405a);border:1.5px solid light-dark(#c9b48a,#5a6a8a)}
 #side .colhead i{background:light-dark(#cddaee,#2c4268);border:1.5px solid light-dark(#8ea8d4,#5f86d6)}
 .colhead span{font-weight:400;color:var(--mute);font-size:13px}
 @media(max-width:600px){section{padding:18px}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
@@ -156,9 +163,9 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
   <p>Cuéntanos qué necesitas. Te mostramos distribuciones, cuánto cuestan los materiales y cómo construir por etapas.</p>
   <span class="tag">Piloto MIHAUS · casas de un nivel · precios de referencia por validar</span>
 </header>
-<main>
-<div id="form">
-  <p class="colhead"><i></i>Lo que nos cuentas <span>· tus respuestas</span></p>
+<main id="p1">
+<div class="inp" id="form">
+  <p class="colhead"><i></i>Paso 1 de 2 · Tu terreno <span>· cuéntanos quién eres y dónde vas a construir</span></p>
   <section>
     <h2><span class="n">1</span>Cuéntanos tu casa</h2>
     <div class="q" style="margin:4px 0 14px"><label for="nombre">Tu nombre completo <span class="hint">(aparece en tu presupuesto)</span></label><input id="nombre" autocomplete="name" placeholder="Nombre y apellidos"></div>
@@ -192,6 +199,13 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div class="q"><label for="pozo">¿Hay pozo o nacimiento cerca?</label><select id="pozo"><option value="no">No</option><option value="si">Sí</option></select></div>
   </section>
 
+  <div class="btns" style="justify-content:flex-end"><button type="button" class="cta" id="toP2">Siguiente: diseña tu casa →</button></div>
+</div>
+</main>
+<main id="p2" hidden>
+<div class="inp" id="form2">
+  <div class="btns" style="margin:0 0 12px"><button type="button" class="ghost" id="toP1">← Tu terreno</button></div>
+  <p class="colhead"><i></i>Paso 2 de 2 · Diseña tu casa <span>· elige tus espacios y mira cómo cambia</span></p>
   <section>
     <h2><span class="n">3</span>Los espacios</h2>
     <p class="sub">Marca qué necesitas hoy y qué puede esperar. La casa se arma por etapas. Las opciones que no caben en tu terreno aparecen desactivadas.</p>
@@ -225,10 +239,26 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div id="ups"></div>
     <p><b id="upTotal"></b></p>
   </section>
+
+  <section>
+    <h2>Tu presupuesto, listo para llevar</h2>
+    <div id="decision"></div>
+    <label class="check"><input type="checkbox" id="entiendo"><span>Entiendo que esto es un diagrama ilustrativo y un presupuesto de materiales de referencia: no son planos constructivos, no incluye mano de obra, transporte ni licencias, y supone suelo firme.</span></label>
+    <div class="btns">
+      <button id="dl" class="cta" type="button" disabled>Descargar mi presupuesto (PDF)</button>
+      <button id="esp" class="ghost" type="button">Buscar un especialista</button>
+    </div>
+    <p class="note" id="dlNote">Marca la casilla para descargar.</p>
+    <div class="btns">
+      <button id="listen" class="ghost" type="button" hidden>Escuchar resumen</button>
+      <button id="copy" class="ghost" type="button">Copiar resumen</button>
+    </div>
+    <p class="note" id="copyNote"></p>
+  </section>
 </div>
 
 <div id="side">
-  <p class="colhead"><i></i>Lo que te devolvemos <span>· plano, presupuesto y opciones</span></p>
+  <p class="colhead"><i></i>Tu casa <span>· plano y presupuesto en vivo</span></p>
   <section>
     <div id="fitNote2"></div>
     <h2>Elige una distribución</h2>
@@ -254,9 +284,11 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div class="stages" id="stages"></div>
     <p id="plazo"></p>
   </section>
+</div>
 
+<div class="more">
   <section>
-    <h2>Dónde comprar y cómo financiar</h2>
+    <details id="dondeDet"><summary><span><b style="font-size:20px">Dónde comprar y cómo financiar</b><br><span class="hint">Mapa, distribuidores, cooperativas y maneras de financiar</span></span></summary>
     <div class="flag" style="margin-top:0"><b>Simulación del piloto.</b> El mapa es esquemático; distribuidores, cooperativas, distancias y precios son ejemplos inventados.</div>
     <p class="note" id="mapNote"></p>
     <div class="fig map" id="mapFig"><svg id="map" role="img" aria-label="Mapa esquemático de tu terreno, distribuidores y cooperativas"></svg></div>
@@ -268,22 +300,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div class="pros" id="coops" style="margin-top:8px"></div>
     <h3>Maneras de financiar tu casa</h3>
     <div id="fin"></div>
-  </section>
-
-  <section>
-    <h2>Tu presupuesto, listo para llevar</h2>
-    <div id="decision"></div>
-    <label class="check"><input type="checkbox" id="entiendo"><span>Entiendo que esto es un diagrama ilustrativo y un presupuesto de materiales de referencia: no son planos constructivos, no incluye mano de obra, transporte ni licencias, y supone suelo firme.</span></label>
-    <div class="btns">
-      <button id="dl" class="cta" type="button" disabled>Descargar mi presupuesto (PDF)</button>
-      <button id="esp" class="ghost" type="button">Buscar un especialista</button>
-    </div>
-    <p class="note" id="dlNote">Marca la casilla para descargar.</p>
-    <div class="btns">
-      <button id="listen" class="ghost" type="button" hidden>Escuchar resumen</button>
-      <button id="copy" class="ghost" type="button">Copiar resumen</button>
-    </div>
-    <p class="note" id="copyNote"></p>
+    </details>
   </section>
 
   <section>
@@ -331,14 +348,14 @@ const OTROS=[['local','Local comercial al frente'],['bodega','Bodega'],['corredo
 $('otros').innerHTML=OTROS.map(([k,t])=>`<div class="q"><label for="o_${k}">${t}</label><select id="o_${k}"><option value="no">No</option><option value="ya">Hoy</option><option value="despues">Después</option></select></div>`).join('');
 
 // tap-chips that drive the hidden selects
-for(const sel of document.querySelectorAll('#form select')){
+for(const sel of document.querySelectorAll('.inp select')){
   const g=document.createElement('div');g.className='chips';g.setAttribute('role','radiogroup');
   const lab=document.querySelector(`label[for="${sel.id}"]`);if(lab)g.setAttribute('aria-label',lab.textContent);
   for(const op of sel.options){const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('role','radio');
     b.dataset.v=op.value;b.textContent=op.text;
     b.addEventListener('click',()=>{sel.value=op.value;sel.dispatchEvent(new Event('change',{bubbles:true}))});g.appendChild(b)}
   sel.after(g);sel._g=g}
-const syncChips=()=>{for(const sel of document.querySelectorAll('#form select'))for(const b of sel._g.children)b.setAttribute('aria-checked',b.dataset.v===sel.value)};
+const syncChips=()=>{for(const sel of document.querySelectorAll('.inp select'))for(const b of sel._g.children)b.setAttribute('aria-checked',b.dataset.v===sel.value)};
 
 const PDEF={block:{n:'Block 15×20×40',u:'unidad',p:4.75},cem:{n:'Cemento (saco 42.5 kg)',u:'saco',p:85},arena:{n:'Arena de río',u:'m³',p:200},piedrin:{n:'Piedrín',u:'m³',p:325},
 hierro:{n:'Hierro #3 (varilla 6 m)',u:'varilla',p:36},alambre:{n:'Alambre de amarre',u:'lb',p:9},lamina:{n:'Lámina troquelada cal. 26, 12 pies',u:'unidad',p:120},
@@ -355,7 +372,7 @@ const pr=k=>(P[k]!=null&&!isNaN(P[k]))?+P[k]:PDEF[k].p;
 const FIELDS=['nombre','lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
 try{localStorage.removeItem('mihaus_form');localStorage.removeItem('mihaus_form2')}catch(e){}
 // every reload starts clean, even in browsers that remember typed values
-for(const el of document.querySelectorAll('#form input,#form textarea,#form select')){
+for(const el of document.querySelectorAll('.inp input,.inp textarea,.inp select')){
   if(el.type==='checkbox')el.checked=el.defaultChecked;
   else if(el.tagName==='SELECT'){const i=[...el.options].findIndex(op=>op.defaultSelected);el.selectedIndex=i<0?0:i}
   else el.value=el.defaultValue}
@@ -674,8 +691,9 @@ $('mat').addEventListener('change',e=>{const k=e.target.dataset.p;if(!k)return;P
   try{localStorage.setItem('mihaus_precios',JSON.stringify(P))}catch(x){}build()});
 $('resetP').addEventListener('click',()=>{P={};try{localStorage.removeItem('mihaus_precios')}catch(x){}build()});
 
-$('form').addEventListener('input',e=>{if(e.target.id==='story'||e.target.closest('#ups'))return;clearTimeout(window._t);window._t=setTimeout(build,250)});
-$('form').addEventListener('change',e=>{if(e.target.id!=='story'&&!e.target.closest('#ups'))build()});
+const onInp=(t,f)=>document.querySelectorAll('.inp').forEach(el=>el.addEventListener(t,f));
+onInp('input',e=>{if(e.target.id==='story'||e.target.id==='entiendo'||e.target.closest('#ups'))return;clearTimeout(window._t);window._t=setTimeout(build,250)});
+onInp('change',e=>{if(e.target.id!=='story'&&e.target.id!=='entiendo'&&!e.target.closest('#ups'))build()});
 
 const DISC='Lo que recibes es un diagrama ilustrativo y un presupuesto de materiales de referencia. No son planos constructivos, no es diseño estructural ni evaluación de suelo, y no sirve para tramitar licencia. Guatemala es zona sísmica y el presupuesto supone suelo firme y una casa de un nivel. No incluye mano de obra, transporte, licencias, terreno ni imprevistos.';
 function resumen(){
@@ -909,8 +927,11 @@ function renderMarket(){
 }
 $('fMax').addEventListener('input',renderMarket);
 $('esp').addEventListener('click',()=>{location.hash='especialistas'});
-$('volver').addEventListener('click',()=>{location.hash='presupuesto'});
-function route(){const m=location.hash==='#especialistas';$('app').hidden=m;$('market').hidden=!m;if(m)renderMarket();window.scrollTo(0,0)}
+$('volver').addEventListener('click',()=>{location.hash='diseno'});
+$('toP2').addEventListener('click',()=>{location.hash='diseno'});
+$('toP1').addEventListener('click',()=>{location.hash='terreno'});
+$('dondeDet').addEventListener('toggle',()=>{if(!$('dondeDet').open)return;drawMap();if(typeof lmap!=='undefined'&&lmap){lmap.invalidateSize();drawReal(true)}});
+function route(){const h=location.hash,m=h==='#especialistas',p2=h==='#diseno';$('app').hidden=m;$('market').hidden=!m;$('p1').hidden=m||p2;$('p2').hidden=m||!p2;if(m)renderMarket();if(p2&&last.mods)drawPlan();window.scrollTo(0,0)}
 addEventListener('hashchange',route);
 
 build();route();
