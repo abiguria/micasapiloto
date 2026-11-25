@@ -225,15 +225,15 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <h2><span class="n">3</span>Los espacios</h2>
     <p class="sub">Marca qué necesitas hoy y qué puede esperar. La casa se arma por etapas. Las opciones que no caben en tu terreno aparecen desactivadas.</p>
     <div id="fitNote"></div>
-    <div class="q"><label for="personas">Personas que vivirán en la casa</label><input id="personas" type="number" min="1" max="15" value="5" inputmode="numeric"></div>
-    <div class="q"><label for="dormYa">Número de dormitorios que necesito hoy</label><select id="dormYa"><option>1</option><option selected>2</option><option>3</option></select></div>
-    <div class="q"><label for="dormDesp">Dormitorios después</label><select id="dormDesp"><option>0</option><option selected>1</option><option>2</option></select></div>
+    <div class="q"><label for="personas">Personas que vivirán en la casa</label><input id="personas" type="number" min="1" max="15" value="" placeholder="Por ejemplo: 5" inputmode="numeric"></div>
+    <div class="q"><label for="dormYa">Número de dormitorios que necesito hoy</label><select id="dormYa"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div>
+    <div class="q"><label for="dormDesp">Dormitorios después</label><select id="dormDesp"><option selected>0</option><option>1</option><option>2</option></select></div>
     <p class="note" id="recDorm"></p>
-    <div class="q"><label for="banos">Baños completos</label><select id="banos"><option>1</option><option>2</option></select></div>
-    <div class="q"><label for="comedor">Comedor</label><select id="comedor"><option value="integrado">Integrado a la cocina</option><option value="separado">Separado</option></select></div>
+    <div class="q"><label for="banos">Baños completos</label><select id="banos"><option selected>0</option><option>1</option><option>2</option></select></div>
+    <div class="q"><label for="comedor">Cocina y comedor</label><select id="comedor"><option value="no" selected>Aún no</option><option value="integrado">Cocina con comedor</option><option value="separado">Cocina y comedor separados</option></select></div>
     <div class="q"><label for="sala">Sala</label><select id="sala"><option value="no">No por ahora</option><option value="integrada">Integrada al comedor</option><option value="separada">Separada</option></select></div>
-    <div class="q"><label for="cocina">Para cocinar hay</label><select id="cocina"><option value="lena">Solo leña</option><option value="gas">Gas disponible</option><option value="electrica">Electricidad suficiente</option></select></div>
-    <div class="q"><label for="pila">Pila</label><select id="pila"><option value="patio">En el patio</option><option value="dentro">Dentro de la casa</option></select></div>
+    <div class="q"><label for="cocina">Para cocinar hay</label><select id="cocina" data-empty><option value="lena">Solo leña</option><option value="gas">Gas disponible</option><option value="electrica">Electricidad suficiente</option></select></div>
+    <div class="q"><label for="pila">Pila</label><select id="pila"><option value="no" selected>Aún no</option><option value="patio">En el patio</option><option value="dentro">Dentro de la casa</option></select></div>
     <h3>Otros espacios</h3>
     <div id="otros"></div>
     <div class="q"><label for="otroTxt">Algo más que necesites <span class="hint">(lo revisa un especialista si no encaja)</span></label><input id="otroTxt" placeholder="Ejemplo: un lugar para guardar la cosecha"></div>
@@ -242,10 +242,10 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
   <section>
     <h2><span class="n">4</span>El dinero</h2>
     <div class="row">
-      <div class="q"><label for="hoy">Disponible hoy</label><div class="unit"><input id="hoy" type="number" min="0" step="500" value="25000" inputmode="numeric"><span>Q</span></div></div>
-      <div class="q"><label for="mes">Aporte mensual <span class="hint">(ahorro o remesas)</span></label><div class="unit"><input id="mes" type="number" min="0" step="100" value="1500" inputmode="numeric"><span>Q</span></div></div>
+      <div class="q"><label for="hoy">Disponible hoy</label><div class="unit"><input id="hoy" type="number" min="0" step="500" value="" placeholder="0" inputmode="numeric"><span>Q</span></div></div>
+      <div class="q"><label for="mes">Aporte mensual <span class="hint">(ahorro o remesas)</span></label><div class="unit"><input id="mes" type="number" min="0" step="100" value="" placeholder="0" inputmode="numeric"><span>Q</span></div></div>
     </div>
-    <div class="q"><label for="credito">¿Te interesa un crédito?</label><select id="credito"><option value="si">Sí, quiero opciones</option><option value="no">No</option></select></div>
+    <div class="q"><label for="credito">¿Te interesa un crédito?</label><select id="credito" data-empty><option value="si">Sí, quiero opciones</option><option value="no">No</option></select></div>
   </section>
 
   <section>
@@ -400,6 +400,7 @@ try{localStorage.removeItem('mihaus_form');localStorage.removeItem('mihaus_form2
 // every reload starts clean, even in browsers that remember typed values
 for(const el of document.querySelectorAll('.inp input,.inp textarea,.inp select')){
   if(el.type==='checkbox')el.checked=el.defaultChecked;
+  else if(el.tagName==='SELECT'&&el.dataset.empty!==undefined)el.selectedIndex=-1;
   else if(el.tagName==='SELECT'){const i=[...el.options].findIndex(op=>op.defaultSelected);el.selectedIndex=i<0?0:i}
   else el.value=el.defaultValue}
 const v=id=>$(id).value, num=id=>Math.max(0,parseFloat($(id).value)||0);
@@ -413,14 +414,14 @@ const WS={eco:[0.8,1.0],std:[1.0,1.2],luz:[1.5,1.2]},WOPT=[['eco','Económicas',
 function items(mode,adj={}){
   const it=[],sala=v('sala'),com=v('comedor'),dYa=+v('dormYa'),dDe=+v('dormDesp');
   if(o('local')!=='no'&&!adj.noExtras&&!(adj.noLater&&o('local')==='despues'))it.push(['Local',6,stg(o('local')),'local']);
-  if((mode==='compacta'||adj.compact)&&(sala!=='no'||com==='separado'))it.push([sala!=='no'?'Cocina, comedor y sala':'Cocina-comedor',sala!=='no'?9:6,1,'cocina']);
+  if(com!=='no'&&(mode==='compacta'||adj.compact)&&(sala!=='no'||com==='separado'))it.push([sala!=='no'?'Cocina, comedor y sala':'Cocina-comedor',sala!=='no'?9:6,1,'cocina']);
   else{
     if(sala==='separada')it.push(['Sala',6,2,'sala']);
     if(sala==='integrada')it.push([com==='separado'?'Sala-comedor':'Sala',6,2,com==='separado'?'salacom':'sala']);
     if(com==='separado'&&sala!=='integrada')it.push(['Comedor',6,2,'comedor']);
-    it.push([com==='integrado'?'Cocina-comedor':'Cocina',6,1,'cocina']);
+    if(com!=='no')it.push([com==='integrado'?'Cocina-comedor':'Cocina',6,1,'cocina']);
   }
-  it.push(['Baño',3,1,'bano']);
+  if(+v('banos')>=1)it.push(['Baño',3,1,'bano']);
   if(+v('banos')===2&&!adj.noExtras)it.push(['Baño 2',3,2,'bano']);
   if(o('bodega')!=='no'&&!adj.noExtras&&!(adj.noLater&&o('bodega')==='despues'))it.push(['Bodega',3,stg(o('bodega')),'bodega']);
   for(let i=0;i<dYa;i++)it.push([`Dormitorio ${i+1}`,6,i===0?1:2,i===0?'dorm1':'dorm']);
@@ -437,6 +438,7 @@ function layout(mode,ar={},adj={},geom=false){
   let cols=two?[{x:0,y:y0,sd:'L'},{x:8,y:y0,sd:'R'}]:[{x:2,y:y0,sd:'R'}];
   if(two&&ar.mir)cols=[cols[1],cols[0]];
   let its=items(mode,adj);
+  if(!its.length)return {mode,na:'Sin espacios'};
   if(ar.kb){const k=its.filter(i=>i[3]==='cocina');its=its.filter(i=>i[3]!=='cocina').concat(k)}
   const isD=i=>i[3]==='dorm'||i[3]==='dorm1';
   const mods=[];
@@ -500,8 +502,9 @@ function quant(L){
     if(v('luz')==='si')q(s,'elec',amb);
     if(v('agua')==='si')q(s,'inodoro',ms.filter(m=>m.k==='bano').length);
   }
-  if(v('agua')==='si')q(1,'fosa',1);else q(1,'letrina',1);
-  q(1,'pila',1);q(1,{lena:'estufa',gas:'estgas',electrica:'estel'}[v('cocina')],1);
+  if(+v('banos')>=1){if(v('agua')==='si')q(1,'fosa',1);else q(1,'letrina',1)}
+  if(v('pila')&&v('pila')!=='no')q(1,'pila',1);
+  if(v('comedor')!=='no'){const e={lena:'estufa',gas:'estgas',electrica:'estel'}[v('cocina')];if(e)q(1,e,1)}
   const cost={};let tot=0;
   for(const s of [1,2,3]){let c=0;for(const k in Q3[s]){Q3[s][k]=Math.ceil(Q3[s][k]*10)/10;c+=Q3[s][k]*pr(k)}cost[s]=c;tot+=c}
   return {Q3,cost,tot};
@@ -515,6 +518,9 @@ function bestFit(){let best=null,small=null;
     if(L.fits&&(!best||L.depth<best.depth))best=L}
   return {best,small}}
 function constrain(){
+  if(!items('central').length){const F=num('frente')||8,D=num('fondo')||15;
+    $('fitNote').innerHTML=`<div class="okbox">Tu casa empieza vacía. Agrega espacios uno a uno; te avisaremos si dejan de caber en tu terreno de ${F} × ${D} m.</div>`;$('fitNote2').innerHTML='';
+    for(const k of FITKEYS)for(const b of $(k)._g.children){b.disabled=false;b.title='';b.classList.remove('helps')}return}
   const {best,small}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
   $('fitNote').innerHTML=best?`<div class="okbox">✓ Tu programa cabe en tu terreno: ocupa ${fm(best.width)} × ${fm(best.depth)} m de ${fm(F)} × ${fm(D)} m.</div>`:
     `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m en un nivel. Las opciones con borde verde punteado ayudan a que quepa.</div>`;
@@ -531,8 +537,14 @@ function build(){
   syncChips();constrain();
   {const t=v('lugar').trim().toLowerCase();const ok=MLIST.some(x=>x.toLowerCase()===t);
    $('lugarNote').textContent=ok?'✓ Ubicación encontrada':t?'Elige una opción de la lista para ubicar tu terreno en el mapa.':'Empieza a escribir y elige tu municipio de la lista.';$('lugarNote').style.color=ok?'var(--ok)':''}
-  const pers=Math.max(1,num('personas')),rec=1+Math.ceil(Math.max(0,pers-2)/2);
-  $('recDorm').textContent=`Recomendación para ${pers} personas: ${rec} dormitorio${rec>1?'s':''} (máximo dos personas por dormitorio). Tú decides.`;
+  const pers=num('personas'),rec=1+Math.ceil(Math.max(0,pers-2)/2);
+  $('recDorm').textContent=pers?`Recomendación para ${pers} personas: ${rec} dormitorio${rec>1?'s':''} (máximo dos personas por dormitorio). Tú decides.`:'Escribe cuántas personas vivirán y te recomendamos cuántos dormitorios.';
+  if(!items('central').length){
+    last={mode:sel,mods:[],seg:new Map(),F:num('frente')||8,D:num('fondo')||15,width:0,depth:0,area:0,circ:0,fits:true,an:'',adj:'',Q3:{1:{},2:{},3:{}},cost:{1:0,2:0,3:0},tot:0,empty:true};
+    $('vars').innerHTML='';$('varNote').textContent='Aún no hay espacios. Empieza en el paso 3: cada espacio que agregues aparece aquí en el plano.';
+    $('fWin').innerHTML=WOPT.map(([k,t,d])=>`<button type="button" class="chip" role="radio" aria-checked="${k===winSel}" data-w="${k}">${t} <span class="hint">${d}</span></button>`).join('');
+    $('arrLbl').textContent='';$('prevA').disabled=$('nextA').disabled=true;
+    drawPlan();flags();budget();supply();upgrades();mat();if(typeof dlState==='function')dlState();return}
   const ADJ=[[{},''],[{noCor:1},'sin corredor'],[{noCor:1,compact:1},'sin corredor y con cocina, comedor y sala en un solo espacio'],
     [{noCor:1,compact:1,noLater:1},'sin corredor, con áreas sociales integradas y dejando fuera lo de la etapa 3'],
     [{noCor:1,compact:1,noLater:1,noExtras:1},'sin corredor, con áreas sociales integradas, sin etapa 3 y sin local, bodega, cuarto familiar ni segundo baño']];
@@ -559,7 +571,7 @@ function build(){
   $('fWin').innerHTML=WOPT.map(([k,t,d])=>`<button type="button" class="chip" role="radio" aria-checked="${k===winSel}" data-w="${k}">${t} <span class="hint">${d}</span></button>`).join('');
   last=opts[sel].list[ai];
   const n=opts[sel].list.length;$('arrLbl').textContent=`${last.an} · ${ai+1} de ${n} · ${Q(last.tot)}`;$('prevA').disabled=$('nextA').disabled=n<2;
-  drawPlan();flags();budget();supply();upgrades();mat();
+  drawPlan();flags();budget();supply();upgrades();mat();if(typeof dlState==='function')dlState();
 }
 $('fWin').addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;winSel=b.dataset.w;build()});
 $('vars').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;if(sel!==b.dataset.m){sel=b.dataset.m;ai=0}build()});
@@ -648,6 +660,7 @@ function drawPlan(){
   if(L.depth>L.D)over+=`<rect x="${X(0)}" y="${Y(L.depth)}" width="${L.width*s}" height="${(L.depth-L.D)*s}" fill="var(--red)" fill-opacity=".28"/>`;
   if(L.width>L.F)over+=`<rect x="${X(L.F)}" y="${Y(L.depth)}" width="${(L.width-L.F)*s}" height="${L.depth*s}" fill="var(--red)" fill-opacity=".28"/>`;
   if(over)over+=`<text x="${X(Math.min(L.width,L.F)/2)}" y="${Y(L.D)-6}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--red)">Fuera del terreno</text>`;
+  if(L.empty){svg.innerHTML=base+`<text x="${ox+L.F*s/2}" y="${Y(L.D/2)}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--mute)">Tu terreno está listo</text><text x="${ox+L.F*s/2}" y="${Y(L.D/2)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">Agrega espacios en el paso 3</text>`;L.ov='';$('planSub').textContent=`Terreno de ${L.F} × ${L.D} m (${L.F*L.D} m²). Todavía no hay espacios.`;return}
   svg.innerHTML=base+fill+fur+walls+open+labels+over;
   const rm=L.mods.filter(m=>m.k!=='pas'&&m.k!=='cor'),nd=rm.length+1+rm.filter(m=>m.k==='local').length,wn=rm.filter(m=>m.wf);
   const wm2=wn.reduce((a,m)=>a+(m.k==='bano'?0.25:WS[winSel][0]*WS[winSel][1]),0);
@@ -678,12 +691,14 @@ function flags(){
 }
 
 function budget(){
+  if(last.empty){$('total').textContent='Aún no hay espacios';$('totalNote').textContent='Cuando agregues espacios verás aquí cuánto cuestan los materiales.';$('sbar').innerHTML='';$('stages').innerHTML='';$('plazo').textContent='';return}
   const {cost,tot}=last;
   {const qf=n=>'Q'+Math.round(n).toLocaleString('es-GT'),uf=n=>'US$'+Math.round(n/RATE).toLocaleString('en-US');
    $('total').innerHTML='';$('total').append(`${qf(tot*0.85)} – ${qf(tot*1.15)}`);
    const sm=document.createElement('small');sm.textContent=`${uf(tot*0.85)} – ${uf(tot*1.15)}`;$('total').append(sm)}
   $('totalNote').textContent=`Opción «${VARS.find(x=>x[0]===sel)[1]}». Punto medio ${Q(tot)} en materiales; rango de ±15% porque los precios son de referencia.`;
-  const names={1:'Núcleo: 1 dormitorio, cocina, baño y pila',2:'Lo que necesitas hoy',3:'Lo que puede esperar'};
+  const n1=last.mods.filter(m=>m.s===1&&!['pas','cor','clos'].includes(m.k)).map(m=>m.l.toLowerCase());
+  const names={1:n1.length?'Núcleo: '+n1.join(', '):'Núcleo',2:'Lo que necesitas hoy',3:'Lo que puede esperar'};
   const H0=num('hoy'),A=num('mes');let cum=0;
   $('stages').innerHTML=[1,2,3].filter(s=>cost[s]>0).map(s=>{cum+=cost[s];const need=cum-H0;
     const when=need<=0?'Alcanza con lo que tienes hoy':A>0?`Lista en unos ${Math.ceil(need/A)} meses de aporte`:'Necesita ahorro o crédito';
@@ -795,8 +810,8 @@ async function makePDF(){
   return doc.output('arraybuffer');
 }
 let dlApi=null;
-const dlState=()=>{const ok=$('entiendo').checked,nm=v('nombre').trim().length>=3;$('dl').disabled=!(ok&&nm);
-  $('dlNote').textContent=!nm?'Escribe tu nombre completo en el paso 1 para descargar.':!ok?'Marca la casilla para descargar.':''};
+const dlState=()=>{const ok=$('entiendo').checked,nm=v('nombre').trim().length>=3,hp=!last.empty;$('dl').disabled=!(ok&&nm&&hp);
+  $('dlNote').textContent=!hp?'Agrega espacios en el paso 3 para generar tu presupuesto.':!nm?'Escribe tu nombre completo en el paso 1 para descargar.':!ok?'Marca la casilla para descargar.':''};
 $('entiendo').addEventListener('change',dlState);$('nombre').addEventListener('input',dlState);
 $('dl').addEventListener('click',async()=>{
   if(!window.jspdf){$('dlNote').textContent='No se pudo preparar el PDF en este navegador.';return}
@@ -974,7 +989,7 @@ build();route();
     $('fill').addEventListener('click',async()=>{
       const t=$('story').value.trim();if(!t){$('aiNote').textContent='Escribe o dicta primero cómo es tu casa.';return}
       $('fill').disabled=true;$('aiNote').textContent='Leyendo lo que contaste…';
-      const schema='{"nombre":string,"lugar":string,"clima":"frio|templado|calido","frente":number,"fondo":number,"pendiente":"plano|ligera|fuerte","barranco":"si|no","relleno":"si|no|nose","encharca":"si|no","tipo":"nueva|ampliacion","luz":"si|no","agua":"si|no","pozo":"si|no","personas":number,"dormYa":"1|2|3","dormDesp":"0|1|2","banos":"1|2","comedor":"integrado|separado","sala":"no|integrada|separada","cocina":"lena|gas|electrica","pila":"patio|dentro","o_local":"no|ya|despues","o_bodega":"no|ya|despues","o_corredor":"no|ya|despues","o_familiar":"no|ya|despues","otroTxt":string,"hoy":number,"mes":number,"credito":"si|no"}';
+      const schema='{"nombre":string,"lugar":string,"clima":"frio|templado|calido","frente":number,"fondo":number,"pendiente":"plano|ligera|fuerte","barranco":"si|no","relleno":"si|no|nose","encharca":"si|no","tipo":"nueva|ampliacion","luz":"si|no","agua":"si|no","pozo":"si|no","personas":number,"dormYa":"0|1|2|3","dormDesp":"0|1|2","banos":"0|1|2","comedor":"no|integrado|separado","sala":"no|integrada|separada","cocina":"lena|gas|electrica","pila":"no|patio|dentro","o_local":"no|ya|despues","o_bodega":"no|ya|despues","o_corredor":"no|ya|despues","o_familiar":"no|ya|despues","otroTxt":string,"hoy":number,"mes":number,"credito":"si|no"}';
       try{
         const r=await sample.json(`Eres el asistente de MIHAUS, una herramienta para familias rurales de Guatemala que planean construir su casa de un nivel. Lee el relato y devuelve SOLO un objeto JSON con estas claves y valores permitidos: ${schema}. Incluye únicamente las claves que el relato menciona o permite deducir con claridad; omite las demás. Montos en quetzales; medidas en metros. Las zonas altas de Huehuetenango, Quetzaltenango, Totonicapán, Sololá, Quiché y San Marcos son "frio". "otroTxt" solo para espacios que no estén en la lista.\n\nRelato:\n"""${t}"""`,{modelTier:'quick'});
         let n=0;
