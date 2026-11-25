@@ -174,7 +174,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
   <section>
     <h2><span class="n">2</span>Dónde y el terreno</h2>
     <p class="sub">Este piloto calcula casas de un solo nivel. Un segundo nivel requiere cálculo estructural de un especialista.</p>
-    <div class="q"><label for="lugar">Municipio y departamento <span class="hint">(escribe para buscar)</span></label><input id="lugar" list="munis" autocomplete="off" placeholder="Por ejemplo: Chiantla" value="Chiantla, Huehuetenango"><datalist id="munis"></datalist><p class="note" id="lugarNote"></p></div>
+    <div class="q"><label for="lugar">Municipio y departamento <span class="hint">(escribe para buscar)</span></label><input id="lugar" list="munis" autocomplete="off" placeholder="Escribe tu municipio, por ejemplo: Chiantla" value=""><datalist id="munis"></datalist><p class="note" id="lugarNote"></p></div>
     <div class="q"><label for="dir">Busca tu aldea, cantón o dirección <span class="hint">(opcional, ubica tu terreno en el mapa)</span></label><div class="btns" style="margin-top:0;flex-wrap:nowrap"><input id="dir" placeholder="Por ejemplo: aldea Chichim, Chiantla"><button type="button" id="dirBtn">Buscar</button></div><div id="dirRes"></div></div>
     <div class="q"><label for="clima">Clima</label><select id="clima"><option value="frio">Altiplano frío</option><option value="templado">Templado</option><option value="calido">Tierra caliente</option></select></div>
     <div class="row">
@@ -353,7 +353,7 @@ try{P=JSON.parse(localStorage.getItem('mihaus_precios')||'{}')}catch(e){P={}}
 const pr=k=>(P[k]!=null&&!isNaN(P[k]))?+P[k]:PDEF[k].p;
 
 const FIELDS=['nombre','lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
-try{const s=JSON.parse(localStorage.getItem('mihaus_form')||'null');if(s)FIELDS.forEach(f=>{if(s[f]!=null&&$(f))$(f).value=s[f]})}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('mihaus_form2')||'null');if(s)FIELDS.forEach(f=>{if(s[f]!=null&&$(f))$(f).value=s[f]})}catch(e){}
 const v=id=>$(id).value, num=id=>Math.max(0,parseFloat($(id).value)||0);
 const o=k=>v('o_'+k), stg=x=>x==='ya'?2:3;
 
@@ -481,10 +481,10 @@ function constrain(){
 }
 function build(){
   const st={};FIELDS.forEach(f=>st[f]=$(f).value);
-  try{localStorage.setItem('mihaus_form',JSON.stringify(st))}catch(e){}
+  try{localStorage.setItem('mihaus_form2',JSON.stringify(st))}catch(e){}
   syncChips();constrain();
   {const t=v('lugar').trim().toLowerCase();const ok=MLIST.some(x=>x.toLowerCase()===t);
-   $('lugarNote').textContent=ok?'✓ Ubicación encontrada':t?'Elige una opción de la lista para ubicar tu terreno en el mapa.':'';$('lugarNote').style.color=ok?'var(--ok)':''}
+   $('lugarNote').textContent=ok?'✓ Ubicación encontrada':t?'Elige una opción de la lista para ubicar tu terreno en el mapa.':'Empieza a escribir y elige tu municipio de la lista.';$('lugarNote').style.color=ok?'var(--ok)':''}
   const pers=Math.max(1,num('personas')),rec=1+Math.ceil(Math.max(0,pers-2)/2);
   $('recDorm').textContent=`Recomendación para ${pers} personas: ${rec} dormitorio${rec>1?'s':''} (máximo dos personas por dormitorio). Tú decides.`;
   const ADJ=[[{},''],[{noCor:1},'sin corredor'],[{noCor:1,compact:1},'sin corredor y con cocina, comedor y sala en un solo espacio'],
@@ -677,7 +677,7 @@ $('form').addEventListener('change',e=>{if(e.target.id!=='story'&&!e.target.clos
 const DISC='Lo que recibes es un diagrama ilustrativo y un presupuesto de materiales de referencia. No son planos constructivos, no es diseño estructural ni evaluación de suelo, y no sirve para tramitar licencia. Guatemala es zona sísmica y el presupuesto supone suelo firme y una casa de un nivel. No incluye mano de obra, transporte, licencias, terreno ni imprevistos.';
 function resumen(){
   const {tot,cost,mods}=last,esp=mods.filter(m=>m.k!=='cor'&&m.k!=='pas').map(m=>m.l).join(', ');
-  return `${v('nombre').trim()?v('nombre').trim().split(' ')[0]+', t':'T'}u casa en ${v('lugar')}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
+  return `${v('nombre').trim()?v('nombre').trim().split(' ')[0]+', t':'T'}u casa en ${v('lugar')||'tu municipio'}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
    `La primera etapa, el núcleo, cuesta cerca de ${Q(cost[1])}. ${$('plazo').textContent} `+
    (blocked?'Por las condiciones del terreno, se recomienda que un especialista revise el proyecto antes de construir. ':'')+
    'Recuerda: esto no incluye mano de obra ni transporte, y no son planos constructivos.';
@@ -705,7 +705,7 @@ async function makePDF(){
   doc.setFillColor(29,58,110);doc.rect(0,0,PW,36,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);
   doc.text('MIHAUS · Presupuesto de referencia',M,14);doc.setFont('helvetica','normal');doc.setFontSize(10);
   doc.setFont('helvetica','bold');doc.setFontSize(12);doc.text(`Preparado para: ${v('nombre').trim()}`,M,23);doc.setFont('helvetica','normal');doc.setFontSize(10);
-  doc.text(`${v('lugar')} · ${new Date().toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})} · Piloto`,M,30);
+  doc.text(`${v('lugar')||'Ubicación sin definir'} · ${new Date().toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})} · Piloto`,M,30);
   y=46;
   para(`Distribución: ${name}. ${Math.round(L.area)} m² techados (${Math.round(L.circ)} m² de pasillo) en un terreno de ${L.F} × ${L.D} m. ${num('personas')} personas.`,10);
   if(L.adj)para('Distribución ajustada para caber en el terreno: '+L.adj+'.',10,true);
@@ -879,7 +879,7 @@ function recTipos(){const t=new Set();
   if(!t.size)t.add('arq');return t}
 function renderMarket(){
   const [mu,de]=v('lugar').split(',').map(norm),rt=recTipos();
-  $('mkSub').textContent=`Tu proyecto: ${v('lugar')} · ${Math.round(last.area)} m² · materiales ${Q(last.tot*0.85)} – ${Q(last.tot*1.15)}.`;
+  $('mkSub').textContent=`Tu proyecto: ${v('lugar')||'ubicación sin definir'} · ${Math.round(last.area)} m² · materiales ${Q(last.tot*0.85)} – ${Q(last.tot*1.15)}.`;
   $('mkRec').textContent=`Para tu terreno te sugerimos: ${[...rt].map(k=>TIPOS[k]).join(' y ')}.`+(blocked?' Se recomienda esta revisión antes de construir.':'');
   chipRow($('fEsp'),[['rec','Sugerido para ti'],['todas','Todas'],...Object.entries(TIPOS)],fEsp,k=>fEsp=k);
   chipRow($('fLoc'),[['muni','Mi municipio'],['depto','Mi departamento'],['pais','Todo el país']],fLoc,k=>fLoc=k);
