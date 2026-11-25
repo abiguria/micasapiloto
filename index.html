@@ -54,6 +54,7 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){.mic::before{animation:none}}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-weight:600;min-height:44px;padding:8px 16px;border-radius:99px}
+.chip.helps{border:2px dashed var(--ok)}
 .chip:disabled{opacity:.38;text-decoration:line-through;cursor:not-allowed}
 .chip[aria-checked=true]{background:var(--ok);border-color:var(--ok);color:var(--btn)}
 .chip[aria-checked=true] .hint{color:inherit;opacity:.8}
@@ -204,6 +205,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 <div id="side">
   <p class="colhead"><i></i>Lo que te devolvemos <span>· plano, presupuesto y opciones</span></p>
   <section>
+    <div id="fitNote2"></div>
     <h2>Elige una distribución</h2>
     <p class="sub">Cada opción acomoda los mismos espacios de otra forma. Toca una para ver su planta y su precio.</p>
     <div class="vars" id="vars"></div>
@@ -353,7 +355,6 @@ function items(mode,adj={}){
   }
   it.push(['Baño',3,1,'bano']);
   if(+v('banos')===2&&!adj.noExtras)it.push(['Baño 2',3,2,'bano']);
-  if(v('pila')==='dentro')it.push(['Pila',3,1,'pila']);
   if(o('bodega')!=='no'&&!adj.noExtras&&!(adj.noLater&&o('bodega')==='despues'))it.push(['Bodega',3,stg(o('bodega')),'bodega']);
   for(let i=0;i<dYa;i++)it.push([`Dormitorio ${i+1}`,6,i===0?1:2,i===0?'dorm1':'dorm']);
   if(!adj.noLater)for(let i=0;i<dDe;i++)it.push([`Dormitorio ${dYa+i+1}`,6,3,'dorm']);
@@ -374,8 +375,13 @@ function layout(mode,ar={},adj={},geom=false){
   const mods=[];
   for(const it of its){const c=two&&ar.zone?(isD(it)?cols[1]:cols[0]):cols.reduce((p,q)=>q.y<p.y?q:p);
     mods.push({l:it[0],x:c.x,y:c.y,w:6,h:it[1],s:it[2],k:it[3],sd:c.sd});c.y+=it[1]}
-  const maxY=Math.max(...cols.map(c=>c.y)),rooms=mods.slice();let cur=null;
-  for(let j=y0;j<maxY;j++){const st=Math.min(...rooms.filter(m=>m.y+m.h>j).map(m=>m.s));
+  let maxY=Math.max(...cols.map(c=>c.y));const rooms=mods.slice();let cur=null,nook=null;
+  // indoor pila goes into leftover hallway space: beside the shorter column if it leaves 1.5 m, otherwise as an alcove at the hallway's end
+  if(v('pila')==='dentro'){const sh=cols.find(c=>maxY-c.y>=3);
+    if(sh)nook={l:'Pila',x:sh.sd==='L'?sh.x+3:sh.x,y:sh.y,w:3,h:3,s:1,k:'pilan',sd:sh.sd,at:'side'};
+    else nook={l:'Pila',x:pasX,y:maxY,w:PW,h:3,s:1,k:'pilan',sd:'R',at:'end'}}
+  const reach=nook?rooms.concat([nook]):rooms;
+  for(let j=y0;j<maxY;j++){const st=Math.min(...reach.filter(m=>m.y+m.h>j).map(m=>m.s));
     if(cur&&cur.s===st)cur.h++;else{cur={l:'Pasillo',x:pasX,y:j,w:PW,h:1,s:st,k:'pas'};mods.push(cur)}}
   if(cor)mods.unshift({l:'Corredor',x:0,y:0,w:Wt,h:y0,s:stg(o('corredor')),k:'cor'});
   const seg=new Map(),add=(k,s)=>{if(!seg.has(k)||seg.get(k)>s)seg.set(k,s)};
@@ -384,12 +390,18 @@ function layout(mode,ar={},adj={},geom=false){
     for(let j=0;j<m.h;j++){add(`v${m.x},${m.y+j}`,m.s);add(`v${m.x+m.w},${m.y+j}`,m.s)}}
   const pas=mods.filter(m=>m.k==='pas');
   if(pas.length)for(let i=0;i<PW;i++){add(`h${pasX+i},${y0}`,pas[0].s);add(`h${pasX+i},${maxY}`,pas[pas.length-1].s)}
-  const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
+  if(nook){mods.push(nook);const n=nook;
+    for(let i=0;i<n.w;i++){add(`h${n.x+i},${n.y}`,1);add(`h${n.x+i},${n.y+n.h}`,1)}
+    for(let j=0;j<n.h;j++){add(`v${n.x},${n.y+j}`,1);add(`v${n.x+n.w},${n.y+j}`,1)}
+    if(n.at==='side'){const hx=n.sd==='L'?n.x+n.w:n.x;for(let j=0;j<n.h;j++)seg.delete(`v${hx},${n.y+j}`)}
+    else{for(let i=0;i<PW;i++)seg.delete(`h${pasX+i},${maxY}`);maxY+=n.h}
+    if(n.at==='side'){const r=rooms.find(m=>m.x===(n.sd==='L'?n.x-3:n.x)&&m.y+m.h===n.y);if(r)r.wshift=true}}
+  const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,nook,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
   // window wall: front or back if open, outer side if there is 1 m of clearance, otherwise toward the neighbour (colindancia)
   const clear=F-L.width,lastIn={};
   for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
   for(const m of rooms)m.wf=['pila','bodega'].includes(m.k)?null:m.y===y0?'front':lastIn[m.x]===m?'back':(m.sd==='R'&&clear>=1)?'side':'col';
-  L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
+  L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.concat(nook?[nook]:[]).reduce((a,m)=>a+m.w*m.h*0.25,0);
   L.fits=L.width<=F&&L.depth<=D;
   if(geom)return L;
   return Object.assign(L,quant(L));
@@ -401,7 +413,7 @@ function quant(L){
     const Lw=[...L.seg.values()].filter(x=>x===s).length*0.5,N=Math.ceil(Lw/1.5),ms=L.mods.filter(m=>m.s===s);
     let open=0,win=0,doors=0,area=0,amb=0;
     for(const m of ms){area+=m.w*m.h*0.25;
-      if(m.k==='cor'||m.k==='pas')continue;doors++;amb++;if(m.k==='local')doors++;
+      if(m.k==='cor'||m.k==='pas'||m.k==='pilan')continue;doors++;amb++;if(m.k==='local')doors++;
       const ws=!m.wf?[0,0]:m.k==='bano'?[0.5,0.5]:WS[winSel],w=ws[0]*ws[1];win+=w;open+=w+0.9*2.1}
     if(s===1){doors++;open+=1.0*2.1}
     const wall=Math.max(0,Lw*H-open),conc=Lw*0.4*0.2+Lw*0.15*0.2*2+N*H*0.15*0.15+area*0.08,mort=wall*0.02;
@@ -428,11 +440,15 @@ function bestFit(){let best=null,small=null;
 function constrain(){
   const {best,small}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
   $('fitNote').innerHTML=best?`<div class="okbox">✓ Tu programa cabe en tu terreno: ocupa ${fm(best.width)} × ${fm(best.depth)} m de ${fm(F)} × ${fm(D)} m.</div>`:
-    `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m en un nivel. Quita o deja para después algún espacio.</div>`;
+    `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m en un nivel. Las opciones con borde verde punteado ayudan a que quepa.</div>`;
+  const area=x=>x?x.width*x.depth:1e9,curA=area(small);
   for(const k of FITKEYS){const sel=$(k),cur=sel.value;
-    for(const b of sel._g.children){if(b.dataset.v===cur){b.disabled=false;b.title='';continue}
-      sel.value=b.dataset.v;const ok=!!bestFit().best;b.disabled=!ok;b.title=ok?'':'No cabe en tu terreno'}
+    for(const b of sel._g.children){b.classList.remove('helps');if(b.dataset.v===cur){b.disabled=false;b.title='';continue}
+      sel.value=b.dataset.v;const r=bestFit(),fits=!!r.best,helps=!best&&!fits&&area(r.small)<curA-0.01;
+      b.disabled=!(fits||helps);b.title=fits?(best?'':'Con esta opción tu programa cabe'):helps?'Ayuda a que quepa':'No cabe en tu terreno';
+      if(!best&&(fits||helps))b.classList.add('helps')}
     sel.value=cur}
+  $('fitNote2').innerHTML=best?'':$('fitNote').innerHTML;
 }
 function build(){
   const st={};FIELDS.forEach(f=>st[f]=$(f).value);
@@ -502,7 +518,7 @@ function drawPlan(){
   const L=last,svg=$('plan'),W=svg.clientWidth||600,Hh=svg.clientHeight||480;
   const LW=Math.max(L.F,L.width),LD=Math.max(L.D,L.depth),pad=34,s=Math.min((W-pad*2)/LW,(Hh-pad*2)/LD);
   const ox=(W-LW*s)/2,oy=(Hh-LD*s)/2,Y=m=>oy+(LD-m)*s,X=m=>ox+m*s;
-  const TC={dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
+  const TC={pilan:'--serv',dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
   const fc=m=>`var(${TC[m.k]})`,op={1:1,2:0.82,3:0.6},tc={1:'var(--ink)',2:'var(--ink)',3:'var(--ink)'};
   let base=`<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--ink)" stroke-opacity=".28" stroke-width="2"/></pattern></defs>`;
   base+=`<rect x="${ox}" y="${Y(L.D)}" width="${L.F*s}" height="${L.D*s}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/>`;
@@ -515,6 +531,9 @@ function drawPlan(){
     for(let i=m.x;i<m.x+m.w;i++)for(let j=m.y;j<m.y+m.h;j++)occ.add(i+','+j);
     fill+=`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="${fc(m)}" opacity="${op[m.s]}"/>`+(m.s===3?`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="url(#hatch)"/>`:'');
     if(m.k==='pas')continue;
+    if(m.k==='pilan'){const pw2=Math.min(1.1,m.w*0.5-0.2),cx=m.x*0.5+m.w*0.25,top=(m.y+m.h)*0.5;
+      fur+=`<rect x="${X(cx-pw2/2)}" y="${Y(top-0.08)}" width="${pw2*s}" height="${0.62*s}" rx="2" fill="none" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.1"/><line x1="${X(cx)}" y1="${Y(top-0.08)}" x2="${X(cx)}" y2="${Y(top-0.7)}" stroke="var(--ink)" stroke-opacity=".7"/>`;
+      const fs2=10,pw3=4*fs2*0.6+12;labels+=`<rect x="${x+w/2-pw3/2}" y="${yy+hh-fs2-11}" width="${pw3}" height="${fs2+7}" rx="8" fill="#ffffff" fill-opacity=".62"/><text x="${x+w/2}" y="${yy+hh-7.5-fs2/2+3}" dy=".35em" text-anchor="middle" font-size="${fs2}" font-weight="700" fill="#14213a">Pila</text>`;continue}
     const f=furn(m),y0m=m.y*0.5;
     for(const [fx,fy,fw,fh,rx] of f.R)fur+=`<rect x="${x+fx*s}" y="${Y(y0m+fy+fh)}" width="${Math.max(1,fw*s)}" height="${fh*s}" rx="${rx*s}" fill="none" stroke="${tc[m.s]}" stroke-opacity=".7" stroke-width="1.1"/>`;
     for(const [cx,cy,cr] of f.C)fur+=`<circle cx="${x+cx*s}" cy="${Y(y0m+cy)}" r="${cr*s}" fill="none" stroke="${tc[m.s]}" stroke-opacity=".7" stroke-width="1"/>`;
@@ -526,7 +545,7 @@ function drawPlan(){
     open+=`<line x1="${hx}" y1="${Y(ya)}" x2="${hx}" y2="${Y(ya+dw)}" stroke="${fc(m)}" stroke-width="6"/><line x1="${hx}" y1="${hy}" x2="${lx}" y2="${hy}" stroke="var(--red)" stroke-width="2"/><path d="M${lx} ${hy} A${dw*s} ${dw*s} 0 0 ${sweep} ${hx} ${oyS}" fill="none" stroke="var(--red)" stroke-width="1.2" stroke-dasharray="3 2"/>`;
     if(m.k==='local')open+=`<line x1="${X(xm+0.3)}" y1="${Y(y0m)}" x2="${X(xm+1.3)}" y2="${Y(y0m)}" stroke="var(--paper)" stroke-width="6"/><line x1="${X(xm+0.3)}" y1="${Y(y0m)}" x2="${X(xm+1.3)}" y2="${Y(y0m)}" stroke="var(--red)" stroke-width="2"/>`;
     if(m.wf){const ww=m.k==='bano'?0.5:WS[winSel][0],t=0.24;let r;
-      if(m.wf==='front')r=[xm+(3-ww)/2,y0m-t/2,ww,t];else if(m.wf==='back')r=[xm+(3-ww)/2,y0m+Hm-t/2,ww,t];
+      if(m.wf==='front')r=[xm+(3-ww)/2,y0m-t/2,ww,t];else if(m.wf==='back')r=[m.wshift?(m.sd==='L'?xm+(1.5-ww)/2:xm+1.5+(1.5-ww)/2):xm+(3-ww)/2,y0m+Hm-t/2,ww,t];
       else{const sx=m.sd==='R'?xm+3:xm;r=[sx-t/2,y0m+(Hm-ww)/2,t,ww]}
       open+=`<rect x="${X(r[0])}" y="${Y(r[1]+r[3])}" width="${r[2]*s}" height="${r[3]*s}" fill="#ffffff" stroke="${m.wf==='col'?'var(--red)':'#14213a'}" stroke-width="1.6" ${m.wf==='col'?'stroke-dasharray="3 2"':''}/>`}
     // room name on a light label at the front, on the far side
@@ -548,7 +567,11 @@ function drawPlan(){
   if(p.length){const x=X((p[0].x+1)*0.5),y1=Y(p[0].y*0.5),y2=Y((p[p.length-1].y+p[p.length-1].h)*0.5),ym=(y1+y2)/2;
     labels+=`<text x="${x}" y="${ym}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)" transform="rotate(-90 ${x} ${ym})" dy="4">Pasillo 1.0 m</text>`;
     open+=`<line x1="${x-0.45*s}" y1="${y1}" x2="${x+0.45*s}" y2="${y1}" stroke="var(--paper)" stroke-width="7"/><line x1="${x-0.45*s}" y1="${y1}" x2="${x+0.45*s}" y2="${y1}" stroke="var(--red)" stroke-width="3"/>`}
-  svg.innerHTML=base+fill+fur+walls+open+labels;
+  let over='';
+  if(L.depth>L.D)over+=`<rect x="${X(0)}" y="${Y(L.depth)}" width="${L.width*s}" height="${(L.depth-L.D)*s}" fill="var(--red)" fill-opacity=".28"/>`;
+  if(L.width>L.F)over+=`<rect x="${X(L.F)}" y="${Y(L.depth)}" width="${(L.width-L.F)*s}" height="${L.depth*s}" fill="var(--red)" fill-opacity=".28"/>`;
+  if(over)over+=`<text x="${X(Math.min(L.width,L.F)/2)}" y="${Y(L.D)-6}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--red)">Fuera del terreno</text>`;
+  svg.innerHTML=base+fill+fur+walls+open+labels+over;
   const rm=L.mods.filter(m=>m.k!=='pas'&&m.k!=='cor'),nd=rm.length+1+rm.filter(m=>m.k==='local').length,wn=rm.filter(m=>m.wf);
   const wm2=wn.reduce((a,m)=>a+(m.k==='bano'?0.25:WS[winSel][0]*WS[winSel][1]),0);
   L.ov=`${nd} puertas y ${wn.length} ventanas (${(Math.round(wm2*10)/10).toLocaleString('es-GT')} m²): ${Q(nd*pr('puerta')+wm2*pr('ventana'))} en materiales.`;
