@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MIHAUS · Piloto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: practical, warm, plain Spanish for a family planning its home.
+   IDEA: a builder's notebook on blueprint paper — answers on the left, the plan drawn live.
+   PICTURE: an illustrative plan on a 3 m grid with beds, bathroom and kitchen, coloured by etapa.
+   COLOUR+TYPE: blueprint indigo dominant, concrete paper support, brick-red accent; Archivo.
+   LAYOUT: numbered step cards with tap-chips in one column; options, plan and budget beside it from 980px. */
+:root{color-scheme:light dark;
+--bg:light-dark(#f4f1ec,#0f1a2e);--paper:light-dark(#ffffff,#16243d);--ink:light-dark(#14213a,#e8edf6);
+--mute:light-dark(#5b6577,#a9b8cf);--line:light-dark(#d9d3c8,#2f4266);--blue:light-dark(#1d3a6e,#8fb3ff);
+--blue2:light-dark(#e4ebf7,#1b2c4b);--red:light-dark(#c8432b,#ff7a5c);--ok:light-dark(#2f6b4f,#7ed3a6);
+--btn:light-dark(#ffffff,#0f1a2e);
+--dorm:light-dark(#9cc0ec,#3d6aa8);--bano:light-dark(#8fd3c8,#2f7d72);--coc:light-dark(#f3c77f,#9a6f22);--sala:light-dark(#f2ab93,#9c5340);--loc:light-dark(#c7aeea,#6a4f9a);--serv:light-dark(#cfc9bc,#5f5a50);--pas:light-dark(#ebe6dc,#3a4a66);
+--e1:light-dark(#1d3a6e,#5f86d6);--e2:light-dark(#6f8fc4,#3a5a94);--e3:light-dark(#d3ddef,#26375a)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Archivo,system-ui,sans-serif;overflow-x:clip}
+header{background:var(--blue);color:var(--btn);padding:22px max(5vw,16px) 26px}
+header h1{margin:0;font-size:clamp(30px,4vw,46px);line-height:1.05;font-weight:800;text-wrap:balance}
+header p{margin:8px 0 0;max-width:62ch}
+.tag{display:inline-block;border:1px solid currentColor;border-radius:99px;padding:3px 12px;font-size:13px;margin-top:12px;opacity:.85}
+main{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;padding:24px max(5vw,16px) 60px;max-width:1320px;margin:auto}
+@media(min-width:980px){main{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}#side{position:sticky;top:16px;align-self:start;max-height:calc(100vh - 32px);overflow:auto}}
+section{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}
+h2{font-size:22px;line-height:1.15;margin:0 0 4px;display:flex;align-items:center;gap:12px}
+h2 .n{flex:none;width:34px;height:34px;border-radius:50%;background:var(--blue);color:var(--btn);display:grid;place-items:center;font-size:17px}
+h3{font-size:17px;margin:20px 0 4px}
+.sub{color:var(--mute);margin:4px 0 14px;font-size:15px}
+.q{margin:16px 0 0}
+.q>label,.ql{display:block;font-weight:700;font-size:15px;margin:0 0 8px}
+.hint{font-weight:400;color:var(--mute);font-size:13px}
+input,textarea{width:100%;font:inherit;font-size:17px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-height:48px}
+textarea{min-height:110px;resize:vertical;line-height:1.45}
+select{display:none}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 18px}
+.unit{position:relative}.unit input{padding-right:46px}.unit span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--mute);font-weight:600;pointer-events:none}
+button{font:inherit;font-weight:700;min-height:46px;padding:10px 18px;border-radius:12px;border:2px solid var(--blue);background:var(--blue);color:var(--btn);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+button.ghost{background:transparent;color:var(--blue)}
+button[disabled]{opacity:.45;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.mic{background:var(--red);border-color:var(--red);color:var(--btn);font-size:17px;padding:12px 22px}
+.mic svg{width:22px;height:22px}
+.mic[aria-pressed=true]{background:var(--paper);color:var(--red)}
+.mic[aria-pressed=true]::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.2}}
+@media(prefers-reduced-motion:reduce){.mic::before{animation:none}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-weight:600;min-height:44px;padding:8px 16px;border-radius:99px}
+.chip[aria-checked=true]{background:var(--ok);border-color:var(--ok);color:var(--btn)}
+.chip[aria-checked=true] .hint{color:inherit;opacity:.8}
+.note{font-size:13px;color:var(--mute)}
+.fig{position:relative;min-height:500px;background:var(--blue2);border-radius:12px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.fig.map{min-height:340px;background:light-dark(#e8efe4,#15281f);background-image:none}
+.fin{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.fin b{grid-column:2}.fin span.ic{grid-row:span 3;width:30px;height:30px;border-radius:50%;background:var(--blue2);display:grid;place-items:center;font-weight:800;color:var(--blue)}
+.fin p{grid-column:2;margin:0;font-size:14px}
+.cap{font-size:13px;color:var(--mute);margin:8px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin:8px 0 0}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+.vars{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:4px 0 14px}
+.var{display:block;text-align:left;background:var(--bg);color:var(--ink);border:2px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:500;line-height:1.3}
+.var b{display:block;font-size:15px}.var strong{display:block;font-size:20px;margin-top:6px;white-space:nowrap}.var small{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+.var[aria-pressed=true]{border-color:var(--ok);background:light-dark(#e7f2ec,#173027);box-shadow:0 0 0 2px var(--ok) inset}
+.iter{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}.iter span{flex:1;font-weight:700;min-width:160px}
+#nextA{background:var(--ok);border-color:var(--ok)}
+.up input,.check input{accent-color:var(--ok)}
+.flag{border-left:4px solid var(--red);background:light-dark(#fbeae6,#3a1f1c);padding:10px 12px;border-radius:8px;margin:8px 0;font-size:15px}
+.okbox{border-left:4px solid var(--ok);background:light-dark(#e7f2ec,#173027);padding:10px 12px;border-radius:8px;margin:8px 0;font-size:15px}
+.big{font-size:clamp(30px,4.5vw,44px);font-weight:800;line-height:1.05;white-space:nowrap}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px}
+.stage{border:1px solid var(--line);border-radius:12px;padding:12px}
+.stage b{display:block;font-size:20px;white-space:nowrap}.stage small{color:var(--mute);display:block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+.scroll{overflow-x:auto}
+.up{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:10px 0;border-bottom:1px solid var(--line);font-weight:400}
+.up input{width:22px;min-height:22px;margin-top:3px}
+.pill{font-size:12px;border-radius:10px;padding:3px 8px;background:var(--blue2);white-space:nowrap;text-align:right}
+details summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+.prices input{min-height:36px;padding:6px 8px;text-align:right;font-size:15px}
+.cta{font-size:18px;padding:14px 24px;background:var(--red);border-color:var(--red)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:12px 0 0;font-weight:400}
+.check input{width:22px;min-height:22px;flex:none;margin-top:2px}
+.mk-top{background:var(--blue);color:var(--btn);padding:22px max(5vw,16px) 26px}
+.mk-top h1{margin:6px 0 0;font-size:clamp(28px,3.6vw,42px);line-height:1.05;font-weight:800}
+.mk-top p{margin:8px 0 0;max-width:70ch}
+.back{background:transparent;border-color:currentColor;color:inherit;min-height:40px;padding:6px 14px}
+.mk{max-width:1100px;margin:auto;padding:24px max(5vw,16px) 60px}
+.filters{display:grid;gap:16px}
+.pros{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pro{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:6px}
+.pro h3{margin:0;font-size:19px}
+.pro .meta{color:var(--mute);font-size:14px}
+.pro ul{list-style:none;padding:0;margin:6px 0}
+.pro li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.pro li b{white-space:nowrap}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:99px;padding:2px 10px;background:var(--blue2);margin-right:6px}
+.badge.near{background:light-dark(#e7f2ec,#173027);color:var(--ok)}
+.ex{font-size:12px;color:var(--mute)}
+.pro button{margin-top:auto}
+input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
+@media(max-width:600px){section{padding:18px}table{font-size:13px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px}.stack td{display:flow-root;border:0;padding:3px 0;padding-inline-start:8em;text-align:start}.stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}.stack td:empty{display:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>Del sueño al presupuesto de tu casa</h1>
+  <p>Cuéntanos qué necesitas. Te mostramos distribuciones, cuánto cuestan los materiales y cómo construir por etapas.</p>
+  <span class="tag">Piloto MIHAUS · casas de un nivel · precios de referencia por validar</span>
+</header>
+<main>
+<div id="form">
+  <section>
+    <h2><span class="n">1</span>Cuéntanos tu casa</h2>
+    <p class="sub">Escribe o habla con tus palabras: quiénes viven, qué espacios necesitas, cómo es el terreno y cuánto tienes. La IA llena el formulario y tú lo revisas.</p>
+    <textarea id="story" aria-label="Cuéntanos tu casa" placeholder="Ejemplo: Somos 5, mi esposa, yo y tres hijos. Tenemos un terreno de 8 por 15 metros en Chiantla, es plano. Queremos dos cuartos ahora y otro después, cocina con comedor, un baño y la pila afuera. No hay agua entubada todavía. Tenemos 25 mil quetzales y mi hermano manda 1,500 al mes."></textarea>
+    <div class="btns">
+      <button id="mic" class="mic" type="button" hidden aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Dictar con mi voz</span></button>
+      <button id="fill" type="button" hidden>Llenar con IA</button>
+    </div>
+    <p class="note" id="aiNote"></p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>Dónde y el terreno</h2>
+    <p class="sub">Este piloto calcula casas de un solo nivel. Un segundo nivel requiere cálculo estructural de un especialista.</p>
+    <div class="q"><label for="lugar">Municipio y departamento</label><input id="lugar" value="Chiantla, Huehuetenango"></div>
+    <div class="q"><label for="clima">Clima</label><select id="clima"><option value="frio">Altiplano frío</option><option value="templado">Templado</option><option value="calido">Tierra caliente</option></select></div>
+    <div class="row">
+      <div class="q"><label for="frente">Frente del terreno</label><div class="unit"><input id="frente" type="number" min="4" step="0.5" value="8" inputmode="decimal"><span>m</span></div></div>
+      <div class="q"><label for="fondo">Fondo del terreno</label><div class="unit"><input id="fondo" type="number" min="4" step="0.5" value="15" inputmode="decimal"><span>m</span></div></div>
+    </div>
+    <div class="q"><label for="pendiente">Pendiente</label><select id="pendiente"><option value="plano">Plano</option><option value="ligera">Ligera</option><option value="fuerte">Fuerte</option></select></div>
+    <div class="q"><label for="barranco">¿Está cerca de un barranco, río o talud?</label><select id="barranco"><option value="no">No</option><option value="si">Sí</option></select></div>
+    <div class="q"><label for="relleno">¿El terreno es relleno?</label><select id="relleno"><option value="no">No, suelo natural</option><option value="si">Sí</option><option value="nose">No sé</option></select></div>
+    <div class="q"><label for="encharca">¿Se encharca cuando llueve?</label><select id="encharca"><option value="no">No</option><option value="si">Sí</option></select></div>
+    <div class="q"><label for="tipo">Tipo de obra</label><select id="tipo"><option value="nueva">Casa nueva</option><option value="ampliacion">Ampliación sobre algo existente</option></select></div>
+    <h3>Servicios</h3>
+    <div class="q"><label for="luz">Red eléctrica</label><select id="luz"><option value="si">Sí hay</option><option value="no">No hay</option></select></div>
+    <div class="q"><label for="agua">Agua entubada</label><select id="agua"><option value="si">Sí hay</option><option value="no">No hay</option></select></div>
+    <div class="q"><label for="pozo">¿Hay pozo o nacimiento cerca?</label><select id="pozo"><option value="no">No</option><option value="si">Sí</option></select></div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>Los espacios</h2>
+    <p class="sub">Marca qué necesitas hoy y qué puede esperar. La casa se arma por etapas.</p>
+    <div class="q"><label for="personas">Personas que vivirán en la casa</label><input id="personas" type="number" min="1" max="15" value="5" inputmode="numeric"></div>
+    <div class="q"><label for="dormYa">Número de dormitorios que necesito hoy</label><select id="dormYa"><option>1</option><option selected>2</option><option>3</option></select></div>
+    <div class="q"><label for="dormDesp">Dormitorios después</label><select id="dormDesp"><option>0</option><option selected>1</option><option>2</option></select></div>
+    <p class="note" id="recDorm"></p>
+    <div class="q"><label for="banos">Baños completos</label><select id="banos"><option>1</option><option>2</option></select></div>
+    <div class="q"><label for="comedor">Comedor</label><select id="comedor"><option value="integrado">Integrado a la cocina</option><option value="separado">Separado</option></select></div>
+    <div class="q"><label for="sala">Sala</label><select id="sala"><option value="no">No por ahora</option><option value="integrada">Integrada al comedor</option><option value="separada">Separada</option></select></div>
+    <div class="q"><label for="cocina">Para cocinar hay</label><select id="cocina"><option value="lena">Solo leña</option><option value="gas">Gas disponible</option><option value="electrica">Electricidad suficiente</option></select></div>
+    <div class="q"><label for="pila">Pila</label><select id="pila"><option value="patio">En el patio</option><option value="dentro">Dentro de la casa</option></select></div>
+    <h3>Otros espacios</h3>
+    <div id="otros"></div>
+    <div class="q"><label for="otroTxt">Algo más que necesites <span class="hint">(lo revisa un especialista si no encaja)</span></label><input id="otroTxt" placeholder="Ejemplo: un lugar para guardar la cosecha"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>El dinero</h2>
+    <div class="row">
+      <div class="q"><label for="hoy">Disponible hoy</label><div class="unit"><input id="hoy" type="number" min="0" step="500" value="25000" inputmode="numeric"><span>Q</span></div></div>
+      <div class="q"><label for="mes">Aporte mensual <span class="hint">(ahorro o remesas)</span></label><div class="unit"><input id="mes" type="number" min="0" step="100" value="1500" inputmode="numeric"><span>Q</span></div></div>
+    </div>
+    <div class="q"><label for="credito">¿Te interesa un crédito?</label><select id="credito"><option value="si">Sí, quiero opciones</option><option value="no">No</option></select></div>
+  </section>
+</div>
+
+<div id="side">
+  <section>
+    <h2>Elige una distribución</h2>
+    <p class="sub">Cada opción acomoda los mismos espacios de otra forma. Toca una para ver su planta y su precio.</p>
+    <div class="vars" id="vars"></div>
+    <p class="note" id="varNote"></p>
+    <div style="margin:0 0 14px"><span class="ql">Tamaño de ventanas</span><div class="chips" id="fWin"></div><p class="note" style="margin:6px 0 0">Ventanas más grandes dan más luz y ventilación, pero cuestan más. Las puertas abren hacia el pasillo.</p></div>
+    <div class="iter"><button type="button" id="prevA" class="ghost" aria-label="Distribución anterior">◀</button><span id="arrLbl"></span><button type="button" id="nextA" aria-label="Otra distribución">Otra distribución ▶</button></div>
+    <div class="fig" id="fig"><svg id="plan" role="img" aria-label="Diagrama ilustrativo de la distribución"></svg></div>
+    <p class="cap"><b>Diagrama ilustrativo.</b> Camas, baño y cocina solo dan idea de escala. No es un plano constructivo.</p>
+    <div class="legend"><span><i style="background:var(--dorm)"></i>Dormitorios</span><span><i style="background:var(--bano)"></i>Baños</span><span><i style="background:var(--coc)"></i>Cocina y comedor</span><span><i style="background:var(--sala)"></i>Sala</span><span><i style="background:var(--loc)"></i>Local</span><span><i style="background:var(--serv)"></i>Pila y bodega</span><span><i style="background:var(--pas)"></i>Pasillo</span></div>
+    <div class="legend"><span>E1, E2, E3 en la esquina = etapa de construcción · rayado = etapa 3 (después)</span><span><i style="background:var(--red)"></i>Puertas</span><span><i style="background:#bfe0ff;border:1px solid var(--ink)"></i>Ventanas</span><span><i style="background:#bfe0ff;border:1px dashed var(--red)"></i>Ventana hacia el vecino</span></div>
+    <p class="note" id="planSub"></p>
+    <div id="flags"></div>
+  </section>
+
+  <section>
+    <h2>La meta: tu casa completa</h2>
+    <p class="sub">Solo materiales. No incluye mano de obra, transporte, licencias, terreno ni imprevistos: tu obra costará más que esto.</p>
+    <div class="big" id="total"></div>
+    <p class="note" id="totalNote"></p>
+    <div class="stages" id="stages"></div>
+    <p id="plazo"></p>
+  </section>
+
+  <section>
+    <h2>Dónde comprar y cómo financiar</h2>
+    <div class="flag" style="margin-top:0"><b>Simulación del piloto.</b> El mapa es esquemático; distribuidores, cooperativas, distancias y precios son ejemplos inventados.</div>
+    <div class="fig map" id="mapFig"><svg id="map" role="img" aria-label="Mapa esquemático de tu terreno, distribuidores y cooperativas"></svg></div>
+    <div class="legend"><span><i style="background:var(--red);border-radius:50%"></i>Tu terreno</span><span><i style="background:var(--blue)"></i>Centro de distribución</span><span><i style="background:var(--ok);border-radius:50%"></i>Cooperativa</span></div>
+    <h3>Centros de distribución cerca de tu terreno</h3>
+    <p class="note">Precio de tu lista de materiales en cada uno, según precios reportados (simulado).</p>
+    <div class="scroll"><table class="stack" id="dist"></table></div>
+    <h3>Cooperativas que operan en tu territorio</h3>
+    <div class="pros" id="coops" style="margin-top:8px"></div>
+    <h3>Maneras de financiar tu casa</h3>
+    <div id="fin"></div>
+  </section>
+
+  <section>
+    <h2>Mejoras que cambian la vida</h2>
+    <p class="sub">La base ya trae piso de concreto, baño, pila, ventanas, cocina ventilada y estructura NSE 4. Estas mejoras suman encima.</p>
+    <div id="ups"></div>
+    <p><b id="upTotal"></b></p>
+  </section>
+
+  <section>
+    <h2>Tu presupuesto, listo para llevar</h2>
+    <div id="decision"></div>
+    <label class="check"><input type="checkbox" id="entiendo"><span>Entiendo que esto es un diagrama ilustrativo y un presupuesto de materiales de referencia: no son planos constructivos, no incluye mano de obra, transporte ni licencias, y supone suelo firme.</span></label>
+    <div class="btns">
+      <button id="dl" class="cta" type="button" disabled>Descargar mi presupuesto (PDF)</button>
+      <button id="esp" class="ghost" type="button">Buscar un especialista</button>
+    </div>
+    <p class="note" id="dlNote">Marca la casilla para descargar.</p>
+    <div class="btns">
+      <button id="listen" class="ghost" type="button" hidden>Escuchar resumen</button>
+      <button id="copy" class="ghost" type="button">Copiar resumen</button>
+    </div>
+    <p class="note" id="copyNote"></p>
+  </section>
+
+  <section>
+    <details>
+      <summary>Materiales y precios de referencia</summary>
+      <p class="note">Precios en quetzales, por validar con ferreterías de la zona. Cámbialos y el presupuesto se recalcula. Se guardan solo en este navegador.</p>
+      <div class="scroll"><table class="stack" id="mat"></table></div>
+      <div class="btns"><button class="ghost" id="resetP" type="button">Restaurar precios</button></div>
+    </details>
+  </section>
+</div>
+</main>
+</div>
+
+<div id="market" hidden>
+  <div class="mk-top">
+    <button class="back" id="volver" type="button">← Volver a mi presupuesto</button>
+    <h1>Especialistas cerca de tu proyecto</h1>
+    <p id="mkSub"></p>
+  </div>
+  <div class="mk">
+    <section>
+      <div class="flag" style="margin-top:0"><b>Simulación del piloto.</b> Los perfiles, calificaciones y precios de esta página son ejemplos inventados. No son profesionales reales y no se envía ninguna solicitud.</div>
+      <p id="mkRec"></p>
+      <div class="filters">
+        <div><span class="ql">Especialidad</span><div class="chips" id="fEsp"></div></div>
+        <div><span class="ql">Ubicación</span><div class="chips" id="fLoc"></div></div>
+        <div><label class="ql" for="fMax">Precio inicial hasta <b id="fMaxV"></b></label><input type="range" id="fMax" min="300" max="5000" step="100" value="5000"></div>
+        <div><span class="ql">Ordenar por</span><div class="chips" id="fOrd"></div></div>
+      </div>
+    </section>
+    <p class="note" id="mkCount"></p>
+    <div class="pros" id="pros"></div>
+  </div>
+</div>
+
+<script>
+{
+const $=id=>document.getElementById(id);
+const Q=n=>'Q'+Math.round(n).toLocaleString('es-GT');
+const OTROS=[['local','Local comercial al frente'],['bodega','Bodega'],['corredor','Corredor o porche'],['familiar','Cuarto para familiar que vive fuera']];
+$('otros').innerHTML=OTROS.map(([k,t])=>`<div class="q"><label for="o_${k}">${t}</label><select id="o_${k}"><option value="no">No</option><option value="ya">Hoy</option><option value="despues">Después</option></select></div>`).join('');
+
+// tap-chips that drive the hidden selects
+for(const sel of document.querySelectorAll('#form select')){
+  const g=document.createElement('div');g.className='chips';g.setAttribute('role','radiogroup');
+  const lab=document.querySelector(`label[for="${sel.id}"]`);if(lab)g.setAttribute('aria-label',lab.textContent);
+  for(const op of sel.options){const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('role','radio');
+    b.dataset.v=op.value;b.textContent=op.text;
+    b.addEventListener('click',()=>{sel.value=op.value;sel.dispatchEvent(new Event('change',{bubbles:true}))});g.appendChild(b)}
+  sel.after(g);sel._g=g}
+const syncChips=()=>{for(const sel of document.querySelectorAll('#form select'))for(const b of sel._g.children)b.setAttribute('aria-checked',b.dataset.v===sel.value)};
+
+const PDEF={block:{n:'Block 15×20×40',u:'unidad',p:4.75},cem:{n:'Cemento (saco 42.5 kg)',u:'saco',p:85},arena:{n:'Arena de río',u:'m³',p:200},piedrin:{n:'Piedrín',u:'m³',p:325},
+hierro:{n:'Hierro #3 (varilla 6 m)',u:'varilla',p:36},alambre:{n:'Alambre de amarre',u:'lb',p:9},lamina:{n:'Lámina troquelada cal. 26, 12 pies',u:'unidad',p:120},
+costanera:{n:'Costanera metálica 6 m',u:'unidad',p:95},puerta:{n:'Puerta metálica con marco',u:'unidad',p:850},ventana:{n:'Ventana con vidrio y balcón',u:'m²',p:450},
+inodoro:{n:'Inodoro, lavamanos y ducha',u:'juego',p:1400},letrina:{n:'Letrina ventilada (VIP) completa',u:'unidad',p:1800},fosa:{n:'Fosa séptica y pozo de absorción',u:'sistema',p:4500},
+pila:{n:'Pila prefabricada con desagüe',u:'unidad',p:900},estufa:{n:'Estufa mejorada de leña con chimenea',u:'unidad',p:1300},estgas:{n:'Estufa de gas con cilindro',u:'unidad',p:1200},
+estel:{n:'Estufa eléctrica',u:'unidad',p:1500},elec:{n:'Instalación eléctrica básica',u:'ambiente',p:450},
+filtro:{n:'Filtro de agua',u:'unidad',p:350},cielo:{n:'Cielo falso / aislamiento',u:'m²',p:75},solar:{n:'Sistema solar individual',u:'sistema',p:3500},
+lluvia:{n:'Captación de agua de lluvia',u:'sistema',p:2500},biodig:{n:'Biodigestor',u:'sistema',p:6500}};
+let P={};
+try{P=JSON.parse(localStorage.getItem('mihaus_precios')||'{}')}catch(e){P={}}
+const pr=k=>(P[k]!=null&&!isNaN(P[k]))?+P[k]:PDEF[k].p;
+
+const FIELDS=['lugar','clima','frente','fondo','pendiente','barranco','relleno','encharca','tipo','luz','agua','pozo','personas','dormYa','dormDesp','banos','comedor','sala','cocina','pila','otroTxt','hoy','mes','credito',...OTROS.map(o=>'o_'+o[0])];
+try{const s=JSON.parse(localStorage.getItem('mihaus_form')||'null');if(s)FIELDS.forEach(f=>{if(s[f]!=null&&$(f))$(f).value=s[f]})}catch(e){}
+const v=id=>$(id).value, num=id=>Math.max(0,parseFloat($(id).value)||0);
+const o=k=>v('o_'+k), stg=x=>x==='ya'?2:3;
+
+const VARS=[['central','Pasillo central','Cuartos a ambos lados de un pasillo'],['lateral','Pasillo lateral','Cuartos en fila, pasillo a un costado'],['compacta','Compacta','Cocina, comedor y sala en un solo espacio']];
+let sel='central',last={},winSel='std',ai=0,opts={};
+const ARR=[['Equilibrada',{}],['Equilibrada en espejo',{mir:1}],['Zonas: día y noche',{zone:1}],['Zonas en espejo',{zone:1,mir:1}],['Cocina al fondo',{kb:1}],['Cocina al fondo en espejo',{kb:1,mir:1}]];
+const WS={eco:[0.8,1.0],std:[1.0,1.2],luz:[1.5,1.2]},WOPT=[['eco','Económicas','0.8 × 1.0 m'],['std','Estándar','1.0 × 1.2 m'],['luz','Más luz','1.5 × 1.2 m']];
+
+function items(mode){
+  const it=[],sala=v('sala'),com=v('comedor'),dYa=+v('dormYa'),dDe=+v('dormDesp');
+  if(o('local')!=='no')it.push(['Local',6,stg(o('local')),'local']);
+  if(mode==='compacta'&&(sala!=='no'||com==='separado'))it.push([sala!=='no'?'Cocina, comedor y sala':'Cocina-comedor',sala!=='no'?9:6,1,'cocina']);
+  else{
+    if(sala==='separada')it.push(['Sala',6,2,'sala']);
+    if(sala==='integrada')it.push([com==='separado'?'Sala-comedor':'Sala',6,2,com==='separado'?'salacom':'sala']);
+    if(com==='separado'&&sala!=='integrada')it.push(['Comedor',6,2,'comedor']);
+    it.push([com==='integrado'?'Cocina-comedor':'Cocina',6,1,'cocina']);
+  }
+  it.push(['Baño',3,1,'bano']);
+  if(+v('banos')===2)it.push(['Baño 2',3,2,'bano']);
+  if(v('pila')==='dentro')it.push(['Pila',3,1,'pila']);
+  if(o('bodega')!=='no')it.push(['Bodega',3,stg(o('bodega')),'bodega']);
+  for(let i=0;i<dYa;i++)it.push([`Dormitorio ${i+1}`,6,i===0?1:2,i===0?'dorm1':'dorm']);
+  for(let i=0;i<dDe;i++)it.push([`Dormitorio ${dYa+i+1}`,6,3,'dorm']);
+  if(o('familiar')!=='no')it.push(['Cuarto familiar',6,stg(o('familiar')),'dorm1']);
+  return it;
+}
+
+// layout on a 0.5 m grid (u). Rooms are 3 m wide (6u); each opens onto a 1.0 m hallway (2u).
+function layout(mode,ar={}){
+  const F=num('frente')||8,D=num('fondo')||15,two=mode==='central'||(mode==='compacta'&&F>=7);
+  if(mode==='central'&&F<7)return {mode,na:'Necesita 7 m de frente o más'};
+  const PW=2,pasX=two?6:0,Wt=two?14:8,cor=o('corredor')!=='no',y0=cor?3:0;
+  let cols=two?[{x:0,y:y0,sd:'L'},{x:8,y:y0,sd:'R'}]:[{x:2,y:y0,sd:'R'}];
+  if(two&&ar.mir)cols=[cols[1],cols[0]];
+  let its=items(mode);
+  if(ar.kb){const k=its.filter(i=>i[3]==='cocina');its=its.filter(i=>i[3]!=='cocina').concat(k)}
+  const isD=i=>i[3]==='dorm'||i[3]==='dorm1';
+  const mods=[];
+  for(const it of its){const c=two&&ar.zone?(isD(it)?cols[1]:cols[0]):cols.reduce((p,q)=>q.y<p.y?q:p);
+    mods.push({l:it[0],x:c.x,y:c.y,w:6,h:it[1],s:it[2],k:it[3],sd:c.sd});c.y+=it[1]}
+  const maxY=Math.max(...cols.map(c=>c.y)),rooms=mods.slice();let cur=null;
+  for(let j=y0;j<maxY;j++){const st=Math.min(...rooms.filter(m=>m.y+m.h>j).map(m=>m.s));
+    if(cur&&cur.s===st)cur.h++;else{cur={l:'Pasillo',x:pasX,y:j,w:PW,h:1,s:st,k:'pas'};mods.push(cur)}}
+  if(cor)mods.unshift({l:'Corredor',x:0,y:0,w:Wt,h:y0,s:stg(o('corredor')),k:'cor'});
+  const seg=new Map(),add=(k,s)=>{if(!seg.has(k)||seg.get(k)>s)seg.set(k,s)};
+  for(const m of mods){if(m.k==='cor')continue;
+    if(m.k!=='pas')for(let i=0;i<m.w;i++){add(`h${m.x+i},${m.y}`,m.s);add(`h${m.x+i},${m.y+m.h}`,m.s)}
+    for(let j=0;j<m.h;j++){add(`v${m.x},${m.y+j}`,m.s);add(`v${m.x+m.w},${m.y+j}`,m.s)}}
+  const pas=mods.filter(m=>m.k==='pas');
+  if(pas.length)for(let i=0;i<PW;i++){add(`h${pasX+i},${y0}`,pas[0].s);add(`h${pasX+i},${maxY}`,pas[pas.length-1].s)}
+  const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
+  // window wall: front or back if open, outer side if there is 1 m of clearance, otherwise toward the neighbour (colindancia)
+  const clear=F-L.width,lastIn={};
+  for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
+  for(const m of rooms)m.wf=['pila','bodega'].includes(m.k)?null:m.y===y0?'front':lastIn[m.x]===m?'back':(m.sd==='R'&&clear>=1)?'side':'col';
+  L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
+  L.fits=L.width<=F&&L.depth<=D;
+  return Object.assign(L,quant(L));
+}
+
+function quant(L){
+  const Q3={1:{},2:{},3:{}},q=(s,k,n)=>{Q3[s][k]=(Q3[s][k]||0)+n},H=2.6;
+  for(const s of [1,2,3]){
+    const Lw=[...L.seg.values()].filter(x=>x===s).length*0.5,N=Math.ceil(Lw/1.5),ms=L.mods.filter(m=>m.s===s);
+    let open=0,win=0,doors=0,area=0,amb=0;
+    for(const m of ms){area+=m.w*m.h*0.25;
+      if(m.k==='cor'||m.k==='pas')continue;doors++;amb++;if(m.k==='local')doors++;
+      const ws=!m.wf?[0,0]:m.k==='bano'?[0.5,0.5]:WS[winSel],w=ws[0]*ws[1];win+=w;open+=w+0.9*2.1}
+    if(s===1){doors++;open+=1.0*2.1}
+    const wall=Math.max(0,Lw*H-open),conc=Lw*0.4*0.2+Lw*0.15*0.2*2+N*H*0.15*0.15+area*0.08,mort=wall*0.02;
+    q(s,'block',wall*12.5*1.05);q(s,'cem',conc*8+mort*7.5);q(s,'arena',conc*0.55+mort*1.1);q(s,'piedrin',conc*0.75);
+    const steel=(Lw*3*4+N*(H+0.5)*2)*1.1;q(s,'hierro',steel/6);q(s,'alambre',steel/6*0.5);
+    q(s,'lamina',area*1.15/2.6);q(s,'costanera',area/5.5);q(s,'puerta',doors);q(s,'ventana',win);
+    if(v('luz')==='si')q(s,'elec',amb);
+    if(v('agua')==='si')q(s,'inodoro',ms.filter(m=>m.k==='bano').length);
+  }
+  if(v('agua')==='si')q(1,'fosa',1);else q(1,'letrina',1);
+  q(1,'pila',1);q(1,{lena:'estufa',gas:'estgas',electrica:'estel'}[v('cocina')],1);
+  const cost={};let tot=0;
+  for(const s of [1,2,3]){let c=0;for(const k in Q3[s]){Q3[s][k]=Math.ceil(Q3[s][k]*10)/10;c+=Q3[s][k]*pr(k)}cost[s]=c;tot+=c}
+  return {Q3,cost,tot};
+}
+
+function build(){
+  const st={};FIELDS.forEach(f=>st[f]=$(f).value);
+  try{localStorage.setItem('mihaus_form',JSON.stringify(st))}catch(e){}
+  syncChips();
+  const pers=Math.max(1,num('personas')),rec=1+Math.ceil(Math.max(0,pers-2)/2);
+  $('recDorm').textContent=`Recomendación para ${pers} personas: ${rec} dormitorio${rec>1?'s':''} (máximo dos personas por dormitorio). Tú decides.`;
+  opts={};const fitAny={};
+  for(const [m] of VARS){const seen=new Set(),list=[];
+    for(const [n,ar] of ARR){const L=layout(m,ar);if(L.na){opts[m]={na:L.na};break}if(seen.has(L.sig))continue;seen.add(L.sig);L.an=n;list.push(L)}
+    if(opts[m])continue;const fit=list.filter(L=>L.fits);fitAny[m]=fit.length>0;opts[m]={list:fit.length?fit:list}}
+  const someFit=Object.values(fitAny).some(x=>x);
+  const show=m=>opts[m].list&&(!someFit||fitAny[m]);
+  if(opts.compacta.list&&opts.central.list&&Math.abs(opts.compacta.list[0].tot-opts.central.list[0].tot)<1)opts.compacta={na:'Igual'};
+  if(!VARS.some(([m])=>m===sel&&show(m))){sel=VARS.find(([m])=>show(m))[0];ai=0}
+  ai=Math.min(ai,opts[sel].list.length-1);
+  $('vars').innerHTML=VARS.filter(([m])=>show(m)).map(([m,n,d])=>{const L=opts[m].list[m===sel?ai:0];
+    return `<button type="button" class="var" data-m="${m}" aria-pressed="${m===sel}"><b>${n}</b><small>${d}</small><strong>${Q(L.tot)}</strong><small>${Math.round(L.area)} m² · pasillo ${Math.round(L.circ/L.area*100)}%${L.fits?'':' · no cabe'}</small></button>`}).join('');
+  const hid=VARS.filter(([m])=>!show(m)&&opts[m].list).map(x=>x[1].toLowerCase());
+  $('varNote').textContent=hid.length?`Ocultamos ${hid.join(' y ')} porque no cabe en tu terreno.`:'';
+  $('fWin').innerHTML=WOPT.map(([k,t,d])=>`<button type="button" class="chip" role="radio" aria-checked="${k===winSel}" data-w="${k}">${t} <span class="hint">${d}</span></button>`).join('');
+  last=opts[sel].list[ai];
+  const n=opts[sel].list.length;$('arrLbl').textContent=`${last.an} · ${ai+1} de ${n} · ${Q(last.tot)}`;$('prevA').disabled=$('nextA').disabled=n<2;
+  drawPlan();flags();budget();supply();upgrades();mat();
+}
+$('fWin').addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;winSel=b.dataset.w;build()});
+$('vars').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;if(sel!==b.dataset.m){sel=b.dataset.m;ai=0}build()});
+$('prevA').addEventListener('click',()=>{const n=opts[sel].list.length;ai=(ai-1+n)%n;build()});
+$('nextA').addEventListener('click',()=>{const n=opts[sel].list.length;ai=(ai+1)%n;build()});
+
+function furn(m){
+  // doors sit at the front corner on the hallway side, so furniture keeps to the back and far side and leaves a walking strip
+  const W=3,Hm=m.h*0.5,R=[],C=[],far=m.sd==='L';
+  const r=(x,y,w,h,rx=0.06)=>R.push([far?x:W-x-w,y,w,h,rx]),c=(x,y,rad)=>C.push([far?x:W-x,y,rad]);
+  const chairs=(x,y,w,h)=>{r(x+0.08,y-0.38,0.34,0.3);r(x+w-0.42,y-0.38,0.34,0.3);r(x+0.08,y+h+0.08,0.34,0.3);r(x+w-0.42,y+h+0.08,0.34,0.3)};
+  const sofa=y=>{r(0.15,y,1.9,0.75,0.12);r(0.6,y-0.85,0.9,0.45)};
+  switch(m.k){
+    case 'dorm1':r(0.12,Hm-2.05,1.4,1.95);r(0.22,Hm-0.45,0.55,0.3,0.1);r(0.87,Hm-0.45,0.55,0.3,0.1);r(1.85,Hm-0.65,1.0,0.55);break;
+    case 'dorm':r(0.12,Hm-1.95,0.9,1.9);r(0.27,Hm-0.4,0.6,0.28,0.1);r(1.4,Hm-1.95,0.9,1.9);r(1.55,Hm-0.4,0.6,0.28,0.1);break;
+    case 'bano':r(0.08,0.6,0.85,Hm-0.68,0.03);r(1.12,Hm-0.62,0.42,0.55,0.18);r(1.65,Hm-0.45,0.48,0.38,0.12);break;
+    case 'cocina':r(0.08,0.75,0.6,Math.min(2.1,Hm-0.85),0.03);r(0.08,0.8,0.6,0.6,0.03);[[0.25,0.95],[0.5,0.95],[0.25,1.23],[0.5,1.23]].forEach(([x,y])=>c(x,y,0.09));
+      if(m.l.includes('comedor')){r(1.0,1.25,0.9,0.75);chairs(1.0,1.25,0.9,0.75)}
+      if(m.l.includes('sala'))r(0.85,Hm-0.85,1.9,0.75,0.12);break;
+    case 'sala':sofa(Hm-0.9);break;
+    case 'comedor':r(0.8,1.15,1.1,0.75);chairs(0.8,1.15,1.1,0.75);break;
+    case 'salacom':r(0.6,1.0,1.0,0.7);chairs(0.6,1.0,1.0,0.7);r(0.15,Hm-0.9,1.9,0.75,0.12);break;
+    case 'pila':r(0.2,Hm-0.75,1.1,0.65,0.03);r(0.75,Hm-0.75,0.01,0.65,0);break;
+    case 'bodega':r(0.08,0.6,0.45,Hm-0.68,0.02);r(0.65,0.6,0.45,Hm-0.68,0.02);break;
+    case 'local':r(0.9,0.75,1.6,0.5,0.03);r(0.08,0.75,0.4,2.1,0.02);break;
+  }
+  return {R,C};
+}
+
+function drawPlan(){
+  const L=last,svg=$('plan'),W=svg.clientWidth||600,Hh=svg.clientHeight||480;
+  const LW=Math.max(L.F,L.width),LD=Math.max(L.D,L.depth),pad=34,s=Math.min((W-pad*2)/LW,(Hh-pad*2)/LD);
+  const ox=(W-LW*s)/2,oy=(Hh-LD*s)/2,Y=m=>oy+(LD-m)*s,X=m=>ox+m*s;
+  const TC={dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
+  const fc=m=>`var(${TC[m.k]})`,op={1:1,2:0.82,3:0.6},tc={1:'var(--ink)',2:'var(--ink)',3:'var(--ink)'};
+  let base=`<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--ink)" stroke-opacity=".28" stroke-width="2"/></pattern></defs>`;
+  base+=`<rect x="${ox}" y="${Y(L.D)}" width="${L.F*s}" height="${L.D*s}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/>`;
+  base+=`<text x="${ox+L.F*s/2}" y="${Y(0)+20}" text-anchor="middle" font-size="12" fill="var(--mute)">Calle · frente ${L.F} m</text>`;
+  base+=`<text x="${ox-10}" y="${Y(L.D/2)}" text-anchor="middle" font-size="12" fill="var(--mute)" transform="rotate(-90 ${ox-10} ${Y(L.D/2)})">Fondo ${L.D} m</text>`;
+  let fill='',fur='',walls='',open='',labels='';
+  const occ=new Set();
+  for(const m of L.mods){const x=X(m.x*0.5),yy=Y((m.y+m.h)*0.5),w=m.w*0.5*s,hh=m.h*0.5*s;
+    if(m.k==='cor'){fill+=`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="${fc(m)}" opacity=".5" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3"/>`;continue}
+    for(let i=m.x;i<m.x+m.w;i++)for(let j=m.y;j<m.y+m.h;j++)occ.add(i+','+j);
+    fill+=`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="${fc(m)}" opacity="${op[m.s]}"/>`+(m.s===3?`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="url(#hatch)"/>`:'');
+    if(m.k==='pas')continue;
+    const f=furn(m),y0m=m.y*0.5;
+    for(const [fx,fy,fw,fh,rx] of f.R)fur+=`<rect x="${x+fx*s}" y="${Y(y0m+fy+fh)}" width="${Math.max(1,fw*s)}" height="${fh*s}" rx="${rx*s}" fill="none" stroke="${tc[m.s]}" stroke-opacity=".7" stroke-width="1.1"/>`;
+    for(const [cx,cy,cr] of f.C)fur+=`<circle cx="${x+cx*s}" cy="${Y(y0m+cy)}" r="${cr*s}" fill="none" stroke="${tc[m.s]}" stroke-opacity=".7" stroke-width="1"/>`;
+    // door on the hallway wall: front corner (back corner for the shop, centred in shallow rooms)
+    const xm=m.x*0.5,Hm=m.h*0.5,wx=m.sd==='L'?xm+3:xm,dir=m.sd==='L'?-1:1,dw=m.k==='bano'?0.8:0.9;
+    const ya=Hm<3?y0m+(Hm-dw)/2:m.k==='local'?y0m+Hm-0.15-dw:y0m+0.15;
+    const hingeY=m.k==='local'&&Hm>=3?ya+dw:ya,otherY=hingeY===ya?ya+dw:ya;
+    const hx=X(wx),hy=Y(hingeY),oyS=Y(otherY),lx=X(wx+dir*dw),sweep=dir*(oyS-hy)>0?1:0;
+    open+=`<line x1="${hx}" y1="${Y(ya)}" x2="${hx}" y2="${Y(ya+dw)}" stroke="${fc(m)}" stroke-width="6"/><line x1="${hx}" y1="${hy}" x2="${lx}" y2="${hy}" stroke="var(--red)" stroke-width="2"/><path d="M${lx} ${hy} A${dw*s} ${dw*s} 0 0 ${sweep} ${hx} ${oyS}" fill="none" stroke="var(--red)" stroke-width="1.2" stroke-dasharray="3 2"/>`;
+    if(m.k==='local')open+=`<line x1="${X(xm+0.3)}" y1="${Y(y0m)}" x2="${X(xm+1.3)}" y2="${Y(y0m)}" stroke="var(--paper)" stroke-width="6"/><line x1="${X(xm+0.3)}" y1="${Y(y0m)}" x2="${X(xm+1.3)}" y2="${Y(y0m)}" stroke="var(--red)" stroke-width="2"/>`;
+    if(m.wf){const ww=m.k==='bano'?0.5:WS[winSel][0],t=0.24;let r;
+      if(m.wf==='front')r=[xm+(3-ww)/2,y0m-t/2,ww,t];else if(m.wf==='back')r=[xm+(3-ww)/2,y0m+Hm-t/2,ww,t];
+      else{const sx=m.sd==='R'?xm+3:xm;r=[sx-t/2,y0m+(Hm-ww)/2,t,ww]}
+      open+=`<rect x="${X(r[0])}" y="${Y(r[1]+r[3])}" width="${r[2]*s}" height="${r[3]*s}" fill="#bfe0ff" stroke="${m.wf==='col'?'var(--red)':'var(--ink)'}" stroke-width="1.3" ${m.wf==='col'?'stroke-dasharray="3 2"':''}/>`}
+    // room name on a light label at the front, on the far side
+    // room name: short translucent label on the far side, clear of the door swing; stage as a small badge in the back corner
+    const AB={'Cocina-comedor':'Cocina-com.','Cocina, comedor y sala':'Cocina-sala','Cuarto familiar':'Cuarto fam.','Sala-comedor':'Sala-com.'};
+    const maxw=w*0.66-6,tw=(t,f)=>t.length*f*0.6+12;let lt=m.l,fs=11.5;
+    if(tw(lt,fs)>maxw)lt=AB[m.l]||m.l.replace('Dormitorio','Dorm.');
+    if(tw(lt,fs)>maxw)fs=Math.max(8.5,fs*maxw/tw(lt,fs));
+    const pw=tw(lt,fs),ph=fs+7,px=m.sd==='L'?x+4:x+w-4-pw,py=Y(y0m)-4-ph;
+    labels+=`<rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="${ph/2}" fill="#ffffff" fill-opacity=".62"/><text x="${px+pw/2}" y="${py+ph/2}" dy=".35em" text-anchor="middle" font-size="${fs}" font-weight="700" fill="#14213a">${lt}</text>`;
+    const bx2=m.sd==='L'?x+11:x+w-11,by2=yy+11;
+    labels+=`<circle cx="${bx2}" cy="${by2}" r="8" fill="#ffffff" fill-opacity=".75"/><text x="${bx2}" y="${by2}" dy=".35em" text-anchor="middle" font-size="9.5" font-weight="800" fill="#14213a">E${m.s}</text>`}
+  // walls: exterior perimeter thick, interior walls thin
+  for(const [k] of L.seg){const t=k[0],[a,b]=k.slice(1).split(',').map(Number);
+    const ext=t==='h'?occ.has(a+','+b)!==occ.has(a+','+(b-1)):occ.has(a+','+b)!==occ.has((a-1)+','+b);
+    const [x1,y1,x2,y2]=t==='h'?[a,b,a+1,b]:[a,b,a,b+1];
+    walls+=`<line x1="${X(x1*0.5)}" y1="${Y(y1*0.5)}" x2="${X(x2*0.5)}" y2="${Y(y2*0.5)}" stroke="var(--ink)" stroke-width="${ext?4:1.8}" stroke-linecap="square"/>`}
+  const p=L.mods.filter(m=>m.k==='pas');
+  if(p.length){const x=X((p[0].x+1)*0.5),y1=Y(p[0].y*0.5),y2=Y((p[p.length-1].y+p[p.length-1].h)*0.5),ym=(y1+y2)/2;
+    labels+=`<text x="${x}" y="${ym}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)" transform="rotate(-90 ${x} ${ym})" dy="4">Pasillo 1.0 m</text>`;
+    open+=`<line x1="${x-0.45*s}" y1="${y1}" x2="${x+0.45*s}" y2="${y1}" stroke="var(--paper)" stroke-width="7"/><line x1="${x-0.45*s}" y1="${y1}" x2="${x+0.45*s}" y2="${y1}" stroke="var(--red)" stroke-width="3"/>`}
+  svg.innerHTML=base+fill+fur+walls+open+labels;
+  const rm=L.mods.filter(m=>m.k!=='pas'&&m.k!=='cor'),nd=rm.length+1+rm.filter(m=>m.k==='local').length,wn=rm.filter(m=>m.wf);
+  const wm2=wn.reduce((a,m)=>a+(m.k==='bano'?0.25:WS[winSel][0]*WS[winSel][1]),0);
+  L.ov=`${nd} puertas y ${wn.length} ventanas (${(Math.round(wm2*10)/10).toLocaleString('es-GT')} m²): ${Q(nd*pr('puerta')+wm2*pr('ventana'))} en materiales.`;
+  $('planSub').textContent=`${Math.round(L.area)} m² techados en un terreno de ${L.F*L.D} m². ${Math.round(L.circ)} m² (${Math.round(L.circ/L.area*100)}%) son pasillo, el espacio que permite entrar a cada cuarto por su puerta. ${L.ov}`;
+}
+new ResizeObserver(()=>last.mods&&drawPlan()).observe($('fig'));
+
+let blocked=false;
+function flags(){
+  const f=[],r=[];
+  if(v('pendiente')==='fuerte')f.push('El terreno tiene pendiente fuerte.');
+  if(v('pendiente')==='ligera')r.push('Hay pendiente ligera: conviene que un profesional revise los niveles.');
+  if(v('barranco')==='si')f.push('Está cerca de barranco, río o talud.');
+  if(v('relleno')!=='no')f.push(v('relleno')==='si'?'El terreno es relleno.':'No se sabe si el terreno es relleno.');
+  if(v('tipo')==='ampliacion')f.push('Es una ampliación sobre una construcción existente.');
+  if(!last.fits)f.push('Esta distribución no cabe en el terreno en un nivel. Prueba otra opción o deja espacios para después; un segundo nivel necesita cálculo estructural de un especialista.');
+  if(v('pozo')==='si'||v('encharca')==='si')f.push('Hay pozo cerca o el terreno se encharca: la ubicación del baño y su sistema la define un especialista.');
+  const nc=last.mods.filter(m=>m.wf==='col').length;
+  if(nc)r.push(`${nc} espacio${nc>1?'s':''} solo tiene${nc>1?'n':''} pared hacia el vecino (ventana punteada). Un especialista puede proponer un patio de luz o una ventana alta; prueba también otra distribución.`);
+  if(v('otroTxt').trim())r.push('Pediste un espacio adicional que revisará un especialista.');
+  blocked=f.length>0;
+  $('flags').innerHTML=(f.length?`<div class="flag"><b>Necesitas un especialista antes de construir.</b><br>${f.join('<br>')}</div>`:'')+
+    r.map(x=>`<div class="okbox">${x}</div>`).join('')+
+    '<div class="okbox">Guatemala es zona sísmica: la evaluación del suelo por un profesional siempre es recomendada.</div>';
+  $('decision').innerHTML=blocked?'<p><b>Tu proyecto necesita un especialista antes de construir.</b> Puedes descargar tu presupuesto ahora y llevarlo a la revisión.</p>':
+    '<p>Descarga tu presupuesto ahora. Si quieres sugerencias, un arquitecto o ingeniero puede revisarlo.</p>';
+}
+
+function budget(){
+  const {cost,tot}=last;
+  $('total').textContent=`${Q(tot*0.85)} – ${Q(tot*1.15)}`;
+  $('totalNote').textContent=`Opción «${VARS.find(x=>x[0]===sel)[1]}». Punto medio ${Q(tot)} en materiales; rango de ±15% porque los precios son de referencia.`;
+  const names={1:'Núcleo: 1 dormitorio, cocina, baño y pila',2:'Lo que necesitas hoy',3:'Lo que puede esperar'};
+  const H0=num('hoy'),A=num('mes');let cum=0;
+  $('stages').innerHTML=[1,2,3].filter(s=>cost[s]>0).map(s=>{cum+=cost[s];const need=cum-H0;
+    const when=need<=0?'Alcanza con lo que tienes hoy':A>0?`Lista en unos ${Math.ceil(need/A)} meses de aporte`:'Necesita ahorro o crédito';
+    return `<div class="stage"><small>Etapa ${s}</small><b>${Q(cost[s])}</b><small>${names[s]}</small><small style="margin-top:6px;color:var(--ink)">${when}</small></div>`}).join('');
+  const need=tot-H0;
+  $('plazo').innerHTML=need<=0?'<b>Con lo que tienes hoy alcanza para los materiales de toda la casa.</b>':
+    A>0?`Con tu aporte de ${Q(A)} al mes completarías los materiales de toda la casa en unos <b>${Math.ceil(need/A)} meses</b>.${v('credito')==='si'?' Un crédito podría adelantar etapas: este presupuesto sirve como solicitud precalificada.':''}`:
+    `Te faltan ${Q(need)}. Un plan de ahorro o un crédito puede ayudarte a avanzar por etapas.`;
+}
+
+function upgrades(){
+  const L=[['filtro',1,'Corto plazo','Agua segura para beber','Hábitat Guatemala'],
+    ['cielo',Math.round(last.area),'Corto plazo',v('clima')==='frio'?'Menos frío en las noches del altiplano':'Menos calor bajo la lámina','OMS 2018']];
+  if(v('cocina')==='lena')L.push(['estgas',1,'Corto plazo, si consigues gas','Cocina sin humo de leña','OMS']);
+  if(v('luz')==='no')L.push(['solar',1,'Mediano plazo','Luz sin velas y carga de teléfono','MEM / BID']);
+  L.push(['lluvia',1,'Mediano plazo','Agua para la pila en temporada de lluvia','TECHO']);
+  if(v('agua')==='si')L.push(['biodig',1,'Mediano plazo','Mejor tratamiento de aguas negras','OMS/UNICEF JMP']);
+  $('ups').innerHTML=L.map(([k,n,t,b,s])=>`<label class="up"><input type="checkbox" data-k="${k}" data-n="${n}"><span><b>${PDEF[k].n}</b><br><span class="note">${b} · respaldo: ${s}</span></span><span class="pill">${t}<br>${Q(n*pr(k))}</span></label>`).join('');
+  upTot();
+}
+function upTot(){let t=0;document.querySelectorAll('#ups input:checked').forEach(c=>t+=c.dataset.n*pr(c.dataset.k));
+  $('upTotal').textContent=t?`Mejoras elegidas: ${Q(t)} adicionales en materiales.`:'Marca las mejoras que te interesan para ver su costo.'}
+$('ups').addEventListener('change',upTot);
+
+function mat(){
+  $('mat').innerHTML='<thead><tr><th>Material</th><th class="n">Cantidad</th><th class="n">Precio (Q)</th></tr></thead><tbody>'+
+    Object.keys(PDEF).map(k=>{const t=[1,2,3].reduce((a,s)=>a+(last.Q3[s][k]||0),0);
+      return `<tr><td>${PDEF[k].n}</td><td class="n">${t?(Math.round(t*10)/10).toLocaleString('es-GT')+' '+PDEF[k].u:'—'}</td><td class="n prices"><input type="number" min="0" step="0.25" data-p="${k}" value="${pr(k)}" aria-label="Precio ${PDEF[k].n}"></td></tr>`}).join('')+'</tbody>';
+}
+$('mat').addEventListener('change',e=>{const k=e.target.dataset.p;if(!k)return;P[k]=parseFloat(e.target.value);
+  try{localStorage.setItem('mihaus_precios',JSON.stringify(P))}catch(x){}build()});
+$('resetP').addEventListener('click',()=>{P={};try{localStorage.removeItem('mihaus_precios')}catch(x){}build()});
+
+$('form').addEventListener('input',e=>{if(e.target.id==='story')return;clearTimeout(window._t);window._t=setTimeout(build,250)});
+$('form').addEventListener('change',e=>{if(e.target.id!=='story')build()});
+
+const DISC='Lo que recibes es un diagrama ilustrativo y un presupuesto de materiales de referencia. No son planos constructivos, no es diseño estructural ni evaluación de suelo, y no sirve para tramitar licencia. Guatemala es zona sísmica y el presupuesto supone suelo firme y una casa de un nivel. No incluye mano de obra, transporte, licencias, terreno ni imprevistos.';
+function resumen(){
+  const {tot,cost,mods}=last,esp=mods.filter(m=>m.k!=='cor'&&m.k!=='pas').map(m=>m.l).join(', ');
+  return `Tu casa en ${v('lugar')}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
+   `La primera etapa, el núcleo, cuesta cerca de ${Q(cost[1])}. ${$('plazo').textContent} `+
+   (blocked?'Por las condiciones del terreno, necesitas que un especialista revise el proyecto antes de construir. ':'')+
+   'Recuerda: esto no incluye mano de obra ni transporte, y no son planos constructivos.';
+}
+$('copy').addEventListener('click',()=>{navigator.clipboard.writeText(resumen()+'\n\n'+DISC).then(()=>$('copyNote').textContent='Resumen copiado.',()=>$('copyNote').textContent='No se pudo copiar en este navegador.')});
+
+// ---------- PDF ----------
+const LIGHT={'--dorm':'#9cc0ec','--bano':'#8fd3c8','--coc':'#f3c77f','--sala':'#f2ab93','--loc':'#c7aeea','--serv':'#cfc9bc','--pas':'#ebe6dc','--e1':'#1d3a6e','--e2':'#6f8fc4','--e3':'#d3ddef','--paper':'#ffffff','--red':'#c8432b','--ink':'#14213a','--mute':'#5b6577'};
+function planPNG(){return new Promise(res=>{
+  setTimeout(()=>res(null),4000);
+  const svg=$('plan'),W=svg.clientWidth||600,H=svg.clientHeight||500;
+  const body=svg.innerHTML.replace(/var\((--[a-z0-9]+)\)/g,(m,k)=>LIGHT[k]||'#000');
+  const txt=`<svg xmlns="http://www.w3.org/2000/svg" width="${W*2}" height="${H*2}" viewBox="0 0 ${W} ${H}" font-family="Arial,sans-serif"><rect width="${W}" height="${H}" fill="#eef2f9"/>${body}</svg>`;
+  const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=W*2;c.height=H*2;c.getContext('2d').drawImage(img,0,0);
+    try{res({url:c.toDataURL('image/png'),r:H/W})}catch(e){res(null)}};img.onerror=()=>res(null);
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(txt)})}
+async function makePDF(){
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'letter'}),L=last,PW=215.9,M=16,CW=PW-M*2;let y=0;
+  const name=VARS.find(x=>x[0]===sel)[1]+' · '+last.an;
+  const need=h=>{if(y+h>262){doc.addPage();y=18}};
+  const fx=t=>String(t).replace(/²/g,'2').replace(/³/g,'3');
+  const para=(t,size=10,bold=false,color=[20,33,58])=>{t=fx(t);doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...color);
+    const lines=doc.splitTextToSize(t,CW);need(lines.length*size*0.42+2);doc.text(lines,M,y);y+=lines.length*size*0.42+2};
+  const h2=t=>{y+=3;need(12);para(t,13,true,[29,58,110])};
+  doc.setFillColor(29,58,110);doc.rect(0,0,PW,30,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(18);
+  doc.text('MIHAUS · Presupuesto de referencia',M,14);doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text(`${v('lugar')} · ${new Date().toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})} · Piloto`,M,22);
+  y=40;
+  para(`Distribución: ${name}. ${Math.round(L.area)} m² techados (${Math.round(L.circ)} m² de pasillo) en un terreno de ${L.F} × ${L.D} m. ${num('personas')} personas.`,10);
+  para(L.ov,10);
+  const img=await planPNG();
+  if(img){const w=CW*0.8,h=w*img.r;need(h+8);doc.addImage(img.url,'PNG',M+CW*0.1,y,w,h);y+=h+3;
+    para('Diagrama ilustrativo: los muebles solo dan idea de escala. No es un plano constructivo.',8,false,[91,101,119])}
+  h2('La meta: tu casa completa');
+  para(`${Q(L.tot*0.85)} – ${Q(L.tot*1.15)} en materiales`,16,true);
+  para(`Punto medio ${Q(L.tot)}. Rango de ±15% porque los precios son de referencia y deben validarse con ferreterías de la zona.`,9,false,[91,101,119]);
+  h2('Por etapas');
+  for(const el of document.querySelectorAll('#stages .stage'))para(Array.from(el.children).map(c=>c.textContent).join(' · '),10);
+  para($('plazo').textContent,10);
+  h2('Materiales');
+  doc.setFontSize(9);
+  const cols=[M,M+92,M+128,M+158];
+  const row=(c,bold)=>{need(6);doc.setFont('helvetica',bold?'bold':'normal');doc.setTextColor(20,33,58);
+    c=c.map(fx);doc.text(c[0],cols[0],y);doc.text(c[1],cols[2]-2,y,{align:'right'});doc.text(c[2],cols[3]-2,y,{align:'right'});doc.text(c[3],PW-M,y,{align:'right'});
+    y+=1.8;doc.setDrawColor(217,211,200);doc.line(M,y,PW-M,y);y+=4};
+  row(['Material','Cantidad','Precio','Subtotal'],true);
+  for(const k of Object.keys(PDEF)){const t=[1,2,3].reduce((a,s2)=>a+(L.Q3[s2][k]||0),0);if(!t)continue;
+    row([PDEF[k].n,`${(Math.round(t*10)/10).toLocaleString('es-GT')} ${PDEF[k].u}`,pr(k)<100?'Q'+pr(k).toFixed(2):Q(pr(k)),Q(t*pr(k))])}
+  row(['Total materiales','','',Q(L.tot)],true);
+  h2('Dónde comprar (simulado)');
+  for(const tr of document.querySelectorAll('#dist tbody tr'))para([...tr.children].map(td=>td.textContent).join(' · '),9);
+  if(geo.best)para(`Mejor opción con toda tu lista: ${geo.best.id} · ${geo.best.n}, ${Q(geo.best.tot)}.`,10,true);
+  h2('Cooperativas en tu territorio (simulado)');
+  geo.coop.forEach((c,i)=>para(`C${i+1} · ${c.n}: ${c.p}, monto de ejemplo hasta ${Q(c.max)} a ${c.pl} meses. A ${c.k} km.`,9));
+  h2('Maneras de financiar');
+  for(const d of document.querySelectorAll('#fin .fin'))para(d.querySelector('b').textContent+': '+d.querySelectorAll('p')[0].textContent,9);
+  const ups=[...document.querySelectorAll('#ups input:checked')];
+  if(ups.length){h2('Mejoras elegidas');ups.forEach(c=>para(`${PDEF[c.dataset.k].n}: ${Q(c.dataset.n*pr(c.dataset.k))}`,10));para($('upTotal').textContent,10,true)}
+  h2('Importante');
+  const fl=[...$('flags').children].map(e=>e.textContent).join('\n').trim();if(fl)para(fl,9);
+  para(DISC,9);
+  para('Precios de referencia por validar. Generado por el piloto de MIHAUS.',8,false,[91,101,119]);
+  return doc.output('arraybuffer');
+}
+let dlApi=null;
+$('entiendo').addEventListener('change',e=>{$('dl').disabled=!e.target.checked;$('dlNote').textContent=e.target.checked?'':'Marca la casilla para descargar.'});
+$('dl').addEventListener('click',async()=>{
+  if(!window.jspdf){$('dlNote').textContent='No se pudo preparar el PDF en este navegador.';return}
+  $('dl').disabled=true;$('dlNote').textContent='Preparando tu PDF…';
+  try{const data=await makePDF();const lug=v('lugar').split(',')[0].normalize('NFD').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'casa';
+    const fn=`presupuesto-mihaus-${lug}.pdf`;
+    if(dlApi)await dlApi.save({filename:fn,data});
+    else{const url=URL.createObjectURL(new Blob([data],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}$('dlNote').textContent='Listo: tu presupuesto se descargó.'}
+  catch(e){$('dlNote').textContent=e&&e.code==='declined'?'Descarga cancelada.':e&&e.code==='rate_limited'?'Espera un momento e intenta de nuevo.':'No se pudo descargar. Intenta de nuevo o usa “Copiar resumen”.'}
+  $('dl').disabled=!$('entiendo').checked});
+
+// ---------- Map, suppliers, cooperatives (simulated) ----------
+const seedOf=t=>{let h=1779033703;for(const ch of t)h=Math.imul(h^ch.charCodeAt(0),3432918353),h=h<<13|h>>>19;return ()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return ((h^=h>>>16)>>>0)/4294967296}};
+let geo=null;
+function makeGeo(){
+  const rnd=seedOf(norm(v('lugar'))||'gt');
+  const dn=['Depósito La Cumbre','Materiales del Valle','Ferretería Cuatro Caminos','Centro de Materiales El Mirador','Agroferretería San Isidro'];
+  const cn=[['Cooperativa Unión Esperanza','Crédito para construcción por etapas',60000,60],['Cooperativa Integral Sierra Alta','Crédito para mejoramiento de vivienda',35000,48],['Cooperativa Mujeres Emprendedoras','Crédito de vivienda para mujeres jefas de hogar',40000,48]];
+  const pick=n=>{const a=n.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const pos=(min,max)=>{const a=rnd()*Math.PI*2,k=min+rnd()*(max-min);return {a,k:Math.round(k*10)/10}};
+  const at=(a0,k0,k1)=>({a:a0+(rnd()-0.5)*0.5,k:Math.round((k0+rnd()*(k1-k0))*10)/10});
+  const rot=rnd()*Math.PI*2;
+  geo={dist:pick(dn).slice(0,4).map((n,i)=>({n,...at(rot+i*Math.PI/2,2.5+i*2.8,4+i*3),f:0.94+rnd()*0.14,cov:i<2?100:Math.round(70+rnd()*25),ent:rnd()>0.35})).sort((a,b)=>a.k-b.k),
+       coop:pick(cn).map((c,i)=>({n:c[0],p:c[1],max:c[2],pl:c[3],...at(rot+Math.PI/4+i*2*Math.PI/3,3,9)}))};
+}
+function drawMap(){
+  const svg=$('map'),W=svg.clientWidth||600,H=svg.clientHeight||340,cx=W/2,cy=H/2,R=Math.min(W,H)/2-26,k=R/15;
+  const pt=o=>[cx+Math.cos(o.a)*o.k*k,cy+Math.sin(o.a)*o.k*k];
+  let h='';
+  for(const r of [5,10,15])h+=`<circle cx="${cx}" cy="${cy}" r="${r*k}" fill="none" stroke="var(--ink)" stroke-opacity=".15" stroke-dasharray="4 4"/><text x="${cx}" y="${cy-r*k-3}" text-anchor="middle" font-size="10" fill="var(--mute)">${r} km</text>`;
+  h+=`<path d="M0 ${H*0.72} C ${W*0.25} ${H*0.6}, ${W*0.45} ${H*0.95}, ${W} ${H*0.78}" fill="none" stroke="#7fb3e6" stroke-width="5" opacity=".6"/>`;
+  for(const d of geo.dist){const [x,y]=pt(d);h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--mute)" stroke-opacity=".5" stroke-width="2"/>`}
+  for(const c of geo.coop){const [x,y]=pt(c);h+=`<circle cx="${x}" cy="${y}" r="8" fill="var(--ok)" stroke="var(--paper)" stroke-width="2"/>`}
+  for(const d of geo.dist){const [x,y]=pt(d);h+=`<rect x="${x-8}" y="${y-8}" width="16" height="16" rx="3" fill="var(--blue)" stroke="var(--paper)" stroke-width="2"/>`}
+  const lab=(x,y,t)=>{const w=t.length*6.3+10,lx=Math.min(W-w-4,Math.max(4,x>=cx?x+12:x-12-w));return `<rect x="${lx}" y="${y-9}" width="${w}" height="18" rx="9" fill="#fff" opacity=".92"/><text x="${lx+5}" y="${y+4}" font-size="11" font-weight="600" fill="#14213a">${t}</text>`};
+  geo.dist.forEach((d,i)=>{const [x,y]=pt(d);h+=lab(x,y,`${String.fromCharCode(65+i)} · ${d.k} km`)});
+  geo.coop.forEach((c,i)=>{const [x,y]=pt(c);h+=lab(x,y,`C${i+1} · ${c.k} km`)});
+  h+=`<circle cx="${cx}" cy="${cy}" r="11" fill="var(--red)" stroke="#fff" stroke-width="3"/>`;
+  svg.innerHTML=h;
+}
+new ResizeObserver(()=>geo&&drawMap()).observe($('mapFig'));
+function supply(){
+  makeGeo();drawMap();
+  const ds=geo.dist.map((d,i)=>({...d,id:String.fromCharCode(65+i),tot:last.tot*d.f*(d.cov/100)}));
+  $('dist').innerHTML='<thead><tr><th>Distribuidor</th><th class="n">Distancia</th><th class="n">Tu lista</th><th>Cubre</th><th>Entrega</th></tr></thead><tbody>'+
+    ds.map(d=>`<tr><td><b>${d.id}</b> · ${d.n} <span class="ex">(ejemplo)</span></td><td class="n">${d.k} km</td><td class="n">${Q(d.tot)}${d.cov<100?'<br><span class="ex">solo lo que tiene</span>':''}</td><td>${d.cov}% de tu lista</td><td>${d.ent?'A domicilio':'Recoger en tienda'}</td></tr>`).join('')+'</tbody>';
+  const best=ds.filter(d=>d.cov===100).sort((a,b)=>a.tot-b.tot)[0];
+  geo.best=best;
+  $('coops').innerHTML=geo.coop.map((c,i)=>`<article class="pro"><span class="ex">Cooperativa de ejemplo</span><h3>C${i+1} · ${c.n}</h3><div class="meta">A ${c.k} km de tu terreno</div><ul><li><span>${c.p}</span></li><li><span>Monto de ejemplo</span><b>hasta ${Q(c.max)}</b></li><li><span>Plazo de ejemplo</span><b>hasta ${c.pl} meses</b></li><li><span>Tasa</span><b>se confirma con la cooperativa</b></li></ul><p class="note">Te pedirían: DPI, constancia de ingresos o de remesas y este presupuesto en PDF.</p><button type="button" class="ghost" data-c="${i}">Pedir que me contacten</button><p class="note" hidden></p></article>`).join('');
+  const need=Math.max(0,last.tot-num('hoy'));
+  const F=[['1','Ahorro y remesas por etapas',`Construye el núcleo primero y avanza según tu flujo de fondos. Con tus números te faltan ${Q(need)} para completar la casa.`,null],
+    ['2','Cooperativa de ahorro y crédito','Muchas cooperativas tienen créditos para construir o mejorar vivienda, y conocen a las familias que reciben remesas. La red más grande del país es MICOOPE.','https://www.micoope.com.gt'],
+    ['3','Banco con seguro FHA','Crédito hipotecario con seguro del FHA. Suele pedir planos firmados y licencia, por eso conviene pasar antes por un especialista.','https://www.fha.gob.gt'],
+    ['4','Subsidio de vivienda del Estado','El FOPAVI otorga subsidios a familias que califican por ingresos. Pregunta en tu municipalidad o en el Ministerio de Comunicaciones, Infraestructura y Vivienda.',null],
+    ['5','Hábitat para la Humanidad Guatemala','Ofrece financiamiento para vivienda nueva y mejoras, incluidos pisos, estufas ahorradoras, letrinas y filtros.','https://www.habitatguate.org'],
+    ['6','Crédito con el proveedor','Algunos distribuidores venden por etapas o a plazos. Pregunta al comprar tu primera etapa.',null]];
+  $('fin').innerHTML=F.map(([n,t,d,u])=>`<div class="fin"><span class="ic">${n}</span><b>${t}</b><p>${d}</p>${u?`<p><a href="${u}" target="_blank" rel="noopener">Sitio oficial</a></p>`:'<p></p>'}</div>`).join('');
+}
+$('coops').addEventListener('click',e=>{const b=e.target.closest('[data-c]');if(!b)return;const n=b.nextElementSibling;b.disabled=true;n.hidden=false;
+  n.textContent='Simulación: en la versión completa, la cooperativa recibiría tu presupuesto y te llamaría para revisar opciones de crédito. No se envió nada.'});
+
+// ---------- Marketplace (simulated) ----------
+const TIPOS={arq:'Arquitectura',ing:'Ingeniería estructural',suelo:'Suelos y saneamiento',sup:'Supervisión de obra'};
+const PROS=[
+ {n:'Arq. Lucía Ordóñez',t:'arq',m:'Chiantla',d:'Huehuetenango',r:4.8,j:31,s:[['Revisión de distribución y presupuesto',600],['Planos para licencia municipal',4500],['Supervisión por etapa',900]]},
+ {n:'Ing. Marvin Recinos',t:'ing',m:'Huehuetenango',d:'Huehuetenango',r:4.6,j:44,s:[['Revisión estructural según NSE 4',900],['Cálculo para ampliación',2800],['Supervisión por etapa',800]]},
+ {n:'Taller Cuchumatán',t:'arq',m:'Huehuetenango',d:'Huehuetenango',r:4.7,j:58,s:[['Revisión de distribución y presupuesto',750],['Planos para licencia municipal',5200]]},
+ {n:'Ing. Rosa Velásquez',t:'suelo',m:'Aguacatán',d:'Huehuetenango',r:4.9,j:27,s:[['Evaluación de suelo en sitio',1000],['Prueba de infiltración para fosa séptica',650],['Diseño de letrina o fosa',900]]},
+ {n:'Supervisiones Sierra Norte',t:'sup',m:'Chiantla',d:'Huehuetenango',r:4.4,j:63,s:[['Supervisión por etapa',700],['Control de materiales en obra',500]]},
+ {n:'Arq. Diego Funes',t:'arq',m:'Quetzaltenango',d:'Quetzaltenango',r:4.8,j:39,s:[['Revisión de distribución y presupuesto',800],['Planos para licencia municipal',5800]]},
+ {n:'Ing. Sandra Alvarado',t:'ing',m:'San Marcos',d:'San Marcos',r:4.5,j:22,s:[['Revisión estructural según NSE 4',850],['Evaluación de suelo en sitio',1100]]},
+ {n:'Arq. Pablo Coyoy',t:'arq',m:'Totonicapán',d:'Totonicapán',r:4.6,j:18,s:[['Revisión de distribución y presupuesto',500],['Acompañamiento de autoconstrucción',1500]]},
+ {n:'Geotecnia del Altiplano',t:'suelo',m:'Quetzaltenango',d:'Quetzaltenango',r:4.7,j:71,s:[['Estudio de suelo con sondeo',3500],['Evaluación de suelo en sitio',1300]]},
+ {n:'Ing. Andrea Cifuentes',t:'ing',m:'Guatemala',d:'Guatemala',r:4.9,j:85,s:[['Revisión estructural según NSE 4',1500],['Cálculo para ampliación',4000]]}];
+const norm=t=>(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+let fEsp='rec',fLoc='depto',fOrd='cerca';
+const chipRow=(el,opts,cur,set)=>{el.innerHTML='';for(const [k,t] of opts){const b=document.createElement('button');b.type='button';b.className='chip';b.setAttribute('role','radio');
+  b.setAttribute('aria-checked',k===cur);b.textContent=t;b.addEventListener('click',()=>{set(k);renderMarket()});el.appendChild(b)}};
+function recTipos(){const t=new Set();
+  if(v('relleno')!=='no'||v('pendiente')!=='plano'||v('barranco')==='si'){t.add('suelo');t.add('ing')}
+  if(v('pozo')==='si'||v('encharca')==='si')t.add('suelo');
+  if(v('tipo')==='ampliacion')t.add('ing');
+  if(!t.size)t.add('arq');return t}
+function renderMarket(){
+  const [mu,de]=v('lugar').split(',').map(norm),rt=recTipos();
+  $('mkSub').textContent=`Tu proyecto: ${v('lugar')} · ${Math.round(last.area)} m² · materiales ${Q(last.tot*0.85)} – ${Q(last.tot*1.15)}.`;
+  $('mkRec').textContent=`Para tu terreno te sugerimos: ${[...rt].map(k=>TIPOS[k]).join(' y ')}.`+(blocked?' Tu proyecto necesita esta revisión antes de construir.':'');
+  chipRow($('fEsp'),[['rec','Sugerido para ti'],['todas','Todas'],...Object.entries(TIPOS)],fEsp,k=>fEsp=k);
+  chipRow($('fLoc'),[['muni','Mi municipio'],['depto','Mi departamento'],['pais','Todo el país']],fLoc,k=>fLoc=k);
+  chipRow($('fOrd'),[['cerca','Más cerca'],['precio','Menor precio'],['calif','Mejor calificado']],fOrd,k=>fOrd=k);
+  const max=+$('fMax').value;$('fMaxV').textContent=Q(max);
+  const prox=p=>norm(p.m)===mu?0:norm(p.d)===(de||mu)?1:2;
+  let L=PROS.map(p=>({...p,px:prox(p),desde:Math.min(...p.s.map(x=>x[1]))}))
+    .filter(p=>fEsp==='todas'||(fEsp==='rec'?rt.has(p.t):p.t===fEsp))
+    .filter(p=>fLoc==='pais'||(fLoc==='muni'?p.px===0:p.px<=1))
+    .filter(p=>p.desde<=max);
+  L.sort(fOrd==='precio'?(a,b)=>a.desde-b.desde:fOrd==='calif'?(a,b)=>b.r-a.r:(a,b)=>a.px-b.px||b.r-a.r);
+  $('mkCount').textContent=L.length?`${L.length} especialista${L.length>1?'s':''} de ejemplo`:'No hay especialistas con esos filtros. Prueba ampliar la ubicación o el precio.';
+  const near=['En tu municipio','En tu departamento','Otro departamento · más viáticos'];
+  $('pros').innerHTML='';
+  for(const p of L){const c=document.createElement('article');c.className='pro';
+    c.innerHTML=`<span class="ex">Perfil de ejemplo</span><h3></h3><div class="meta"></div><div><span class="badge ${p.px===0?'near':''}"></span><span class="badge"></span></div><ul></ul><button type="button">Pedir cotización</button><p class="note" hidden></p>`;
+    c.querySelector('h3').textContent=p.n;
+    c.querySelector('.meta').textContent=`${TIPOS[p.t]} · ${p.m}, ${p.d} · ★ ${p.r.toFixed(1)} · ${p.j} proyectos`;
+    const bs=c.querySelectorAll('.badge');bs[0].textContent=near[p.px];bs[1].textContent='Desde '+Q(p.desde);
+    const ul=c.querySelector('ul');for(const [sv,pz] of p.s){const li=document.createElement('li');const a=document.createElement('span');a.textContent=sv;const b=document.createElement('b');b.textContent=Q(pz);li.append(a,b);ul.appendChild(li)}
+    c.querySelector('button').addEventListener('click',e=>{const n=c.querySelector('p.note');n.hidden=false;e.target.disabled=true;
+      n.textContent=`Simulación: en la versión completa, ${p.n} recibiría tu diagrama, tu presupuesto y las respuestas sobre el terreno, y te respondería con una cotización. No se envió nada.`});
+    $('pros').appendChild(c)}
+}
+$('fMax').addEventListener('input',renderMarket);
+$('esp').addEventListener('click',()=>{location.hash='especialistas'});
+$('volver').addEventListener('click',()=>{location.hash='presupuesto'});
+function route(){const m=location.hash==='#especialistas';$('app').hidden=m;$('market').hidden=!m;if(m)renderMarket();window.scrollTo(0,0)}
+addEventListener('hashchange',route);
+
+build();route();
+
+(async()=>{
+  // works inside Claude (capabilities) and on any website (browser fallbacks)
+  const use=async n=>{try{return window.claude&&window.claude.use?await window.claude.use(n):null}catch(e){return null}};
+  dlApi=await use('downloads');
+  const sample=await use('sample');
+  if(sample){$('fill').hidden=false;
+    $('fill').addEventListener('click',async()=>{
+      const t=$('story').value.trim();if(!t){$('aiNote').textContent='Escribe o dicta primero cómo es tu casa.';return}
+      $('fill').disabled=true;$('aiNote').textContent='Leyendo lo que contaste…';
+      const schema='{"lugar":string,"clima":"frio|templado|calido","frente":number,"fondo":number,"pendiente":"plano|ligera|fuerte","barranco":"si|no","relleno":"si|no|nose","encharca":"si|no","tipo":"nueva|ampliacion","luz":"si|no","agua":"si|no","pozo":"si|no","personas":number,"dormYa":"1|2|3","dormDesp":"0|1|2","banos":"1|2","comedor":"integrado|separado","sala":"no|integrada|separada","cocina":"lena|gas|electrica","pila":"patio|dentro","o_local":"no|ya|despues","o_bodega":"no|ya|despues","o_corredor":"no|ya|despues","o_familiar":"no|ya|despues","otroTxt":string,"hoy":number,"mes":number,"credito":"si|no"}';
+      try{
+        const r=await sample.json(`Eres el asistente de MIHAUS, una herramienta para familias rurales de Guatemala que planean construir su casa de un nivel. Lee el relato y devuelve SOLO un objeto JSON con estas claves y valores permitidos: ${schema}. Incluye únicamente las claves que el relato menciona o permite deducir con claridad; omite las demás. Montos en quetzales; medidas en metros. Las zonas altas de Huehuetenango, Quetzaltenango, Totonicapán, Sololá, Quiché y San Marcos son "frio". "otroTxt" solo para espacios que no estén en la lista.\n\nRelato:\n"""${t}"""`,{modelTier:'quick'});
+        let n=0;
+        if(r&&typeof r==='object')for(const k of FIELDS){if(r[k]==null)continue;const el=$(k),val=String(r[k]);
+          if(el.tagName==='SELECT'){if([...el.options].some(op=>op.value===val)){el.value=val;n++}}else{el.value=val;n++}}
+        build();$('aiNote').textContent=n?`Listo: llené ${n} respuestas. Revísalas y corrige lo que haga falta.`:'No encontré datos claros. Llena el formulario a mano.';
+      }catch(e){$('aiNote').textContent=e&&e.code==='rate_limited'?'Demasiadas solicitudes. Intenta en un momento.':'No se pudo usar la IA ahora. Llena el formulario a mano.'}
+      $('fill').disabled=false});
+  }
+  let d=await use('dictation');
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!d&&SR){const rec=new SR();rec.lang='es-GT';rec.continuous=true;rec.interimResults=false;let fin=()=>{},st=()=>{};
+    rec.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(e.results[i].isFinal)fin({text:e.results[i][0].transcript.trim()})};
+    rec.onstart=()=>st({state:'listening'});rec.onend=()=>st({state:'idle'});rec.onerror=()=>st({state:'idle'});
+    d={onFinal:f=>fin=f,onState:f=>st=f,start:async()=>rec.start(),stop:async()=>rec.stop()}}
+  if(d){$('mic').hidden=false;let on=false;const lbl=$('mic').querySelector('span');
+    d.onFinal(({text})=>{const s=$('story');s.value=(s.value?s.value+' ':'')+text});
+    d.onState(({state})=>{on=state==='listening';$('mic').setAttribute('aria-pressed',on);lbl.textContent=on?'Escuchando… toca para detener':'Dictar con mi voz'});
+    $('mic').addEventListener('click',()=>{if(on){d.stop().catch(()=>{})}else{d.start().catch(e=>{if(e&&e.code==='not_granted')$('mic').hidden=true})}});
+  }
+  let tts=await use('tts');
+  if(!tts&&window.speechSynthesis)tts={speak:t=>new Promise((res,rej)=>{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='es-GT';
+    const vs=speechSynthesis.getVoices().filter(x=>/^es/i.test(x.lang));if(vs.length)u.voice=vs.find(x=>/GT|MX|US|419/.test(x.lang))||vs[0];u.onend=res;u.onerror=rej;speechSynthesis.speak(u)})};
+  if(tts){$('listen').hidden=false;
+    $('listen').addEventListener('click',()=>{tts.speak(resumen(),{language:'es'}).catch(e=>{if(e&&e.code==='not_granted')$('listen').hidden=true})});
+  }
+})();
+}
+</script>
+</body>
+</html>
