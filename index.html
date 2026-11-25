@@ -945,22 +945,43 @@ async function ensure3D(){
   (function loop(){requestAnimationFrame(loop);if(view==='3d'){ctl.update();R.render(scene,cam)}})();
   T3={R,scene,cam,ctl,group,framed:''};return T3;
 }
+function tex3D(){
+  if(T3.tex)return T3.tex;
+  const cv=(w,h,f)=>{const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;return t};
+  const rnd=seedOf('mihaus-tex');
+  // concrete block 15x20x40, running bond: canvas = 0.8 m x 0.4 m (2 blocks, 2 courses)
+  const block=cv(256,128,(g,w,h)=>{g.fillStyle='#d9d5cc';g.fillRect(0,0,w,h);
+    for(let r=0;r<2;r++)for(let i=-1;i<3;i++){const x=i*128+(r?64:0),sh=176+Math.floor(rnd()*18);g.fillStyle=`rgb(${sh},${sh-2},${sh-8})`;g.fillRect(x+3,r*64+3,122,58);
+      for(let k=0;k<70;k++){const c=150+Math.floor(rnd()*50);g.fillStyle=`rgba(${c},${c},${c},.35)`;g.fillRect(x+3+rnd()*120,r*64+3+rnd()*56,2,2)}}});
+  // smooth concrete (soleras, floor)
+  const conc=cv(128,128,(g,w,h)=>{g.fillStyle='#c9c7c1';g.fillRect(0,0,w,h);for(let k=0;k<900;k++){const c=170+Math.floor(rnd()*60);g.fillStyle=`rgba(${c},${c},${c-4},.5)`;g.fillRect(rnd()*w,rnd()*h,1.5,1.5)}});
+  // corrugated galvanised sheet: 8 ribs per 0.6 m
+  const lam=cv(128,16,(g,w,h)=>{for(let x=0;x<w;x++){const t=(Math.sin(x/w*Math.PI*16)+1)/2,c=Math.round(150+t*80);g.fillStyle=`rgb(${c},${c+4},${c+10})`;g.fillRect(x,0,1,h)}});
+  // ground
+  const grass=cv(128,128,(g,w,h)=>{g.fillStyle='#a7b98a';g.fillRect(0,0,w,h);for(let k=0;k<1400;k++){const v2=rnd();g.fillStyle=v2<.5?'rgba(120,145,90,.55)':'rgba(170,160,120,.45)';g.fillRect(rnd()*w,rnd()*h,2,2)}});
+  return T3.tex={block,conc,lam,grass};
+}
 function draw3D(){
-  if(!T3||view!=='3d')return;const {group,cam,ctl}=T3,L=last;
-  while(group.children.length){const c=group.children.pop();c.geometry&&c.geometry.dispose();c.material&&c.material.dispose()}
-  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const COL={dorm:0x9cc0ec,dorm1:0x9cc0ec,bano:0x8fd3c8,cocina:0xf3c77f,comedor:0xf3c77f,salacom:0xf3c77f,sala:0xf2ab93,local:0xc7aeea,pila:0xcfc9bc,pilan:0xcfc9bc,bodega:0xcfc9bc,clos:0xcfc9bc,pas:0xebe6dc,cor:0xd9d3c8};
-  const mat=(c,o=1)=>new THREE.MeshLambertMaterial({color:c,transparent:o<1,opacity:o});
-  const boxm=(w,h,d,x,y,z,m)=>{const g=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);g.position.set(x,y,z);group.add(g);return g};
-  const H=2.6,TK=0.15,F=L.F,D=L.D;
-  // lot and ground
-  boxm(F,0.02,D,F/2,-0.01,-D/2,mat(0xb9c9a4));
+  if(!T3||view!=='3d')return;const {group,cam,ctl}=T3,L=last,TX=tex3D();
+  while(group.children.length){const c=group.children.pop();c.geometry&&c.geometry.dispose();if(c.material&&!c.material.shared)c.material.dispose()}
+  const tint={dorm:0x9cc0ec,dorm1:0x9cc0ec,bano:0x8fd3c8,cocina:0xf3c77f,comedor:0xf3c77f,salacom:0xf3c77f,sala:0xf2ab93,local:0xc7aeea,pila:0xcfc9bc,pilan:0xcfc9bc,bodega:0xcfc9bc,clos:0xcfc9bc,pas:0xebe6dc,cor:0xd9d3c8};
+  const mix=c=>new THREE.Color(0xffffff).lerp(new THREE.Color(c),0.35);
+  const M=(o)=>{const m=new THREE.MeshLambertMaterial(o);return m};
+  const shared=(m)=>{m.shared=true;return m};
+  T3.mats=T3.mats||{block:shared(M({map:TX.block})),conc:shared(M({map:TX.conc})),lam:shared(M({map:TX.lam,side:THREE.DoubleSide})),
+    door:shared(M({color:0x5d6b7a})),glass:shared(M({color:0x9fd0ff,transparent:true,opacity:.45})),frame:shared(M({color:0x3b3f46})),grass:shared(M({map:TX.grass}))};
+  const MT=T3.mats;
+  const uvs=(g,su,sv)=>{const a=g.attributes.uv;for(let i=0;i<a.count;i++)a.setXY(i,a.getX(i)*su,a.getY(i)*sv);a.needsUpdate=true;return g};
+  const box=(w,h,d,x,y,z,m,su=1,sv=1)=>{const g=uvs(new THREE.BoxGeometry(w,h,d),su,sv),me=new THREE.Mesh(g,m);me.position.set(x,y,z);group.add(me);return me};
+  const H=2.6,TK=0.15,F=L.F,D=L.D,SOL=2.4;
+  // ground and lot line
+  const gp=new THREE.Mesh(uvs(new THREE.PlaneGeometry(F,D),F/2,D/2),MT.grass);gp.rotation.x=-Math.PI/2;gp.position.set(F/2,0,-D/2);group.add(gp);
   const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(F,0.03,D)),new THREE.LineBasicMaterial({color:0xc8432b}));edge.position.set(F/2,0.01,-D/2);group.add(edge);
   if(L.empty){T3.framed='';cam.position.set(F/2+F,Math.max(F,D),D*0.6);ctl.target.set(F/2,0,-D/2);return}
-  // floors
-  for(const m of L.mods){const w=m.w*0.5,d=m.h*0.5;boxm(w,0.12,d,m.x*0.5+w/2,0.06,-(m.y*0.5+d/2),mat(COL[m.k]||0xdddddd,m.s===3?0.6:1))}
-  // openings: doors on the hallway side, windows on the chosen wall
-  const op=new Map();const mark=(k,t)=>op.set(k,t);
+  // concrete floor slab, lightly tinted by space type
+  for(const m of L.mods){const w=m.w*0.5,d=m.h*0.5;box(w,0.12,d,m.x*0.5+w/2,0.06,-(m.y*0.5+d/2),M({map:TX.conc,color:mix(tint[m.k]||0xdddddd)}),w,d)}
+  // openings
+  const op=new Map(),mark=(k,t)=>op.set(k,t);
   for(const m of L.mods){if(['pas','cor','pilan','clos'].includes(m.k))continue;
     const xm=m.x*0.5,y0m=m.y*0.5,Hm=m.h*0.5,dw=m.k==='bano'?0.8:0.9,wx=m.sd==='L'?xm+3:xm;
     const ya=Hm<3?y0m+(Hm-dw)/2:m.k==='local'?y0m+Hm-0.15-dw:y0m+0.15;
@@ -970,41 +991,42 @@ function draw3D(){
         for(let i=Math.floor(x0/0.5);i<Math.ceil((x0+ww)/0.5);i++)mark(`h${i},${yy}`,m.k==='bano'?'winS':'win')}
       else{const sx=m.sd==='R'?m.x+m.w:m.x,z0=y0m+Hm/2-ww/2;for(let j=Math.floor(z0/0.5);j<Math.ceil((z0+ww)/0.5);j++)mark(`v${sx},${j}`,m.k==='bano'?'winS':'win')}}}
   const p=L.mods.filter(m=>m.k==='pas');if(p.length)for(let i=0;i<2;i++)mark(`h${p[0].x+i},${p[0].y}`,'door');
-  const wallM=mat(0xf1ece2),glass=mat(0x9fd0ff,0.45);
+  // walls: block up to the crown beam (solera de corona) in concrete
   for(const [k] of L.seg){const t=k[0],[a,b]=k.slice(1).split(',').map(Number),o=op.get(k);
-    const piece=(y1,y2)=>{const h=y2-y1,yc=(y1+y2)/2;if(t==='h')boxm(0.5+TK,h,TK,a*0.5+0.25,yc,-(b*0.5),wallM);else boxm(TK,h,0.5+TK,a*0.5,yc,-(b*0.5+0.25),wallM)};
-    if(o==='door')piece(2.1,H);
+    const seg=(y1,y2,m,isB)=>{if(y2<=y1)return;const h=y2-y1,yc=(y1+y2)/2,len=0.5+TK;
+      if(t==='h')box(len,h,TK,a*0.5+0.25,yc,-(b*0.5),m,isB?len/0.8:len,isB?h/0.4:h);else box(TK,h,len,a*0.5,yc,-(b*0.5+0.25),m,isB?len/0.8:len,isB?h/0.4:h)};
+    const piece=(y1,y2)=>{seg(y1,Math.min(y2,SOL),MT.block,true);seg(Math.max(y1,SOL),y2,MT.conc,false)};
+    if(o==='door'){piece(2.1,H);
+      if(t==='h')box(0.5,2.1,0.04,a*0.5+0.25,1.05,-(b*0.5),MT.door);else box(0.04,2.1,0.5,a*0.5,1.05,-(b*0.5+0.25),MT.door)}
     else if(o==='win'||o==='winS'){const lo=o==='winS'?1.6:0.9;piece(0,lo);piece(2.1,H);
-      if(t==='h')boxm(0.5,2.1-lo,0.04,a*0.5+0.25,(lo+2.1)/2,-(b*0.5),glass);else boxm(0.04,2.1-lo,0.5,a*0.5,(lo+2.1)/2,-(b*0.5+0.25),glass)}
+      if(t==='h'){box(0.5,2.1-lo,0.03,a*0.5+0.25,(lo+2.1)/2,-(b*0.5),MT.glass);box(0.5,0.05,0.06,a*0.5+0.25,lo,-(b*0.5),MT.frame);box(0.5,0.05,0.06,a*0.5+0.25,2.1,-(b*0.5),MT.frame)}
+      else{box(0.03,2.1-lo,0.5,a*0.5,(lo+2.1)/2,-(b*0.5+0.25),MT.glass);box(0.06,0.05,0.5,a*0.5,lo,-(b*0.5+0.25),MT.frame);box(0.06,0.05,0.5,a*0.5,2.1,-(b*0.5+0.25),MT.frame)}}
     else piece(0,H)}
-  // gable roof (dos aguas) of corrugated sheet over the footprint, ridge along the longer side, 27% slope, 0.4 m overhang
-  {const Wb=L.width,Db=L.depth,ov=0.4,sl=0.27,He=H+0.05,alongZ=Db>=Wb,span=alongZ?Wb:Db,Hr=He+span/2*sl,ye=He-ov*sl;
-   const P=(a,y,b)=>alongZ?[a,y,b]:[b,y,a];// a = across the slope, b = along the ridge (world: x/z)
-   const A0=-ov,A1=span+ov,Am=span/2,B0=ov,B1=-((alongZ?Db:Wb)+ov);
-   const mk=(pts,idx,c,o)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pts.flat(),3));g.setIndex(idx);g.computeVertexNormals();
-     const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide,transparent:o<1,opacity:o}));group.add(m);
-     const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x5b6577}));group.add(e);return m};
-   const toW=([a,y,b])=>alongZ?[a,y,b]:[ -b,y,-a];
-   const q=(p)=>p.map(toW);
-   const roof=q([[A0,ye,B0],[Am,Hr,B0],[Am,Hr,B1],[A0,ye,B1],[A1,ye,B0],[A1,ye,B1]]);
-   mk(roof,[0,1,2,0,2,3,1,4,5,1,5,2],0x9aa7b8,1);
-   const Bf=0,Bb=-(alongZ?Db:Wb);
-   mk(q([[0,He,Bf],[span,He,Bf],[Am,Hr,Bf],[0,He,Bb],[span,He,Bb],[Am,Hr,Bb]]),[0,1,2,3,4,5],0xf1ece2,1);
-   // wood stove chimney: rises from the stove and clears the roof by 0.8 m
+  // gable roof of corrugated sheet, ridge along the longer side, 27% slope, 0.4 m overhang
+  {const Wb=L.width,Db=L.depth,ov=0.4,sl=0.27,He=H+0.05,alongZ=Db>=Wb,span=alongZ?Wb:Db,Hr=He+span/2*sl,ye=He-ov*sl,len=alongZ?Db:Wb;
+   const toW=([a,y,b])=>alongZ?[a,y,b]:[-b,y,-a];
+   const mk=(loc,uv,idx,m)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(loc.map(toW).flat(),3));
+     g.setAttribute('uv',new THREE.Float32BufferAttribute(uv.flat(),2));g.setIndex(idx);g.computeVertexNormals();const me=new THREE.Mesh(g,m);group.add(me);
+     const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:0x5b6577}));group.add(e)};
+   const A0=-ov,A1=span+ov,Am=span/2,B0=ov,B1=-(len+ov),slopeL=Math.hypot(Am-A0,Hr-ye);
+   const rp=[[A0,ye,B0],[Am,Hr,B0],[Am,Hr,B1],[A0,ye,B1],[A1,ye,B0],[A1,ye,B1]];
+   const ru=rp.map(([a,,b],i)=>[b/0.6,(i===1||i===2)?slopeL:0]);
+   mk(rp,ru,[0,1,2,0,2,3,1,4,5,1,5,2],MT.lam);
+   const gp2=[[0,He,0],[span,He,0],[Am,Hr,0],[0,He,-len],[span,He,-len],[Am,Hr,-len]];
+   mk(gp2,gp2.map(([a,y])=>[a/0.8,y/0.4]),[0,1,2,3,4,5],MT.block);
    const ck=L.mods.find(m=>m.k==='cocina');
    if(ck&&v('cocina')==='lena'){const lx=ck.sd==='L'?0.38:3-0.38,wx=ck.x*0.5+lx,wz=-(ck.y*0.5+1.1);
      const across=alongZ?wx:-wz,yr=He+(span/2-Math.abs(across-span/2))*sl,top=yr+0.8;
-     const pm=new THREE.MeshLambertMaterial({color:0x3b3f46});
-     const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,top-0.9,16),pm);pipe.position.set(wx,(top+0.9)/2,wz);group.add(pipe);
-     const cap=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.18,16),pm);cap.position.set(wx,top+0.16,wz);group.add(cap);
-     const st=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.9,0.6),new THREE.MeshLambertMaterial({color:0x8a7a6a}));st.position.set(wx-(ck.sd==='L'?0:0),0.45,wz+0.0);group.add(st)}}
+     const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,top-0.9,16),MT.frame);pipe.position.set(wx,(top+0.9)/2,wz);group.add(pipe);
+     const cap=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.18,16),MT.frame);cap.position.set(wx,top+0.16,wz);group.add(cap);
+     box(0.6,0.9,0.6,wx,0.45,wz,MT.conc)}}
   const key=L.sig+F+D;if(T3.framed!==key){T3.framed=key;const cx=L.width/2,cz=-L.depth/2,r=Math.max(L.width,L.depth,6);
     ctl.target.set(cx,1,cz);cam.position.set(cx+r*0.75,r*1.7,cz+r*1.45);ctl.update()}
 }
 $('viewSeg').addEventListener('click',async e=>{const b=e.target.closest('[data-v]');if(!b)return;view=b.dataset.v;
   for(const x of $('viewSeg').children)x.setAttribute('aria-pressed',x.dataset.v===view);
   const is3=view==='3d';$('v3').hidden=!is3;$('plan').style.visibility=is3?'hidden':'';
-  $('v3note').textContent=is3?'Arrastra para girar, pellizca o usa la rueda para acercar. Es ilustrativa.':'';
+  $('v3note').textContent=is3?'Arrastra para girar, pellizca o usa la rueda para acercar. Materiales: block de concreto 15×20×40, solera de concreto, techo de lámina, piso de concreto, puertas metálicas y ventanas de vidrio. Es ilustrativa.':'';
   if(is3){try{await ensure3D();draw3D()}catch(x){$('v3note').textContent='No se pudo cargar la vista 3D en este navegador.'}}});
 
 // ---------- Marketplace (simulated) ----------
