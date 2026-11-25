@@ -54,11 +54,13 @@ button[disabled]{opacity:.45;cursor:not-allowed}
 @media(prefers-reduced-motion:reduce){.mic::before{animation:none}}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--bg);color:var(--ink);border:1.5px solid var(--line);font-weight:600;min-height:44px;padding:8px 16px;border-radius:99px}
+.chip:disabled{opacity:.38;text-decoration:line-through;cursor:not-allowed}
 .chip[aria-checked=true]{background:var(--ok);border-color:var(--ok);color:var(--btn)}
 .chip[aria-checked=true] .hint{color:inherit;opacity:.8}
 .note{font-size:13px;color:var(--mute)}
 .fig{position:relative;min-height:500px;background:var(--blue2);border-radius:12px;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:24px 24px}
 .fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.dres{display:block;width:100%;text-align:left;background:light-dark(#fff,#0f1a2e);color:var(--ink);border:1.5px solid var(--line);margin-top:6px;font-weight:500;min-height:44px}
 .fig.map>#lmap{position:absolute;inset:0;border-radius:12px;z-index:1}
 .mk-d,.mk-c{display:grid;place-items:center;width:26px;height:26px;color:#fff;border:2px solid #fff;font:700 12px Archivo,sans-serif;box-shadow:0 1px 4px #0005}
 .mk-d{background:#1d3a6e;border-radius:6px}.mk-c{background:#2f6b4f;border-radius:50%}
@@ -154,6 +156,7 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <h2><span class="n">2</span>Dónde y el terreno</h2>
     <p class="sub">Este piloto calcula casas de un solo nivel. Un segundo nivel requiere cálculo estructural de un especialista.</p>
     <div class="q"><label for="lugar">Municipio y departamento <span class="hint">(escribe para buscar)</span></label><input id="lugar" list="munis" autocomplete="off" placeholder="Por ejemplo: Chiantla" value="Chiantla, Huehuetenango"><datalist id="munis"></datalist><p class="note" id="lugarNote"></p></div>
+    <div class="q"><label for="dir">Busca tu aldea, cantón o dirección <span class="hint">(opcional, ubica tu terreno en el mapa)</span></label><div class="btns" style="margin-top:0;flex-wrap:nowrap"><input id="dir" placeholder="Por ejemplo: aldea Chichim, Chiantla"><button type="button" id="dirBtn">Buscar</button></div><div id="dirRes"></div></div>
     <div class="q"><label for="clima">Clima</label><select id="clima"><option value="frio">Altiplano frío</option><option value="templado">Templado</option><option value="calido">Tierra caliente</option></select></div>
     <div class="row">
       <div class="q"><label for="frente">Frente del terreno</label><div class="unit"><input id="frente" type="number" min="4" step="0.5" value="8" inputmode="decimal"><span>m</span></div></div>
@@ -172,7 +175,8 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
 
   <section>
     <h2><span class="n">3</span>Los espacios</h2>
-    <p class="sub">Marca qué necesitas hoy y qué puede esperar. La casa se arma por etapas.</p>
+    <p class="sub">Marca qué necesitas hoy y qué puede esperar. La casa se arma por etapas. Las opciones que no caben en tu terreno aparecen desactivadas.</p>
+    <div id="fitNote"></div>
     <div class="q"><label for="personas">Personas que vivirán en la casa</label><input id="personas" type="number" min="1" max="15" value="5" inputmode="numeric"></div>
     <div class="q"><label for="dormYa">Número de dormitorios que necesito hoy</label><select id="dormYa"><option>1</option><option selected>2</option><option>3</option></select></div>
     <div class="q"><label for="dormDesp">Dormitorios después</label><select id="dormDesp"><option>0</option><option selected>1</option><option>2</option></select></div>
@@ -358,7 +362,7 @@ function items(mode,adj={}){
 }
 
 // layout on a 0.5 m grid (u). Rooms are 3 m wide (6u); each opens onto a 1.0 m hallway (2u).
-function layout(mode,ar={},adj={}){
+function layout(mode,ar={},adj={},geom=false){
   const F=num('frente')||8,D=num('fondo')||15,two=mode==='central'||(mode==='compacta'&&F>=7);
   if(mode==='central'&&F<7)return {mode,na:'Necesita 7 m de frente o más'};
   const PW=2,pasX=two?6:0,Wt=two?14:8,cor=o('corredor')!=='no'&&!adj.noCor,y0=cor?3:0;
@@ -387,6 +391,7 @@ function layout(mode,ar={},adj={}){
   for(const m of rooms)m.wf=['pila','bodega'].includes(m.k)?null:m.y===y0?'front':lastIn[m.x]===m?'back':(m.sd==='R'&&clear>=1)?'side':'col';
   L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
   L.fits=L.width<=F&&L.depth<=D;
+  if(geom)return L;
   return Object.assign(L,quant(L));
 }
 
@@ -413,10 +418,26 @@ function quant(L){
   return {Q3,cost,tot};
 }
 
+// the lot is the main constraint: an option is enabled only if the whole programme still fits in some distribution
+const FITKEYS=['dormYa','dormDesp','banos','comedor','sala','pila','o_local','o_bodega','o_corredor','o_familiar'];
+function bestFit(){let best=null,small=null;
+  for(const [m] of VARS)for(const [,ar] of ARR){const L=layout(m,ar,{},true);if(L.na)continue;
+    if(!small||L.width*L.depth<small.width*small.depth)small=L;
+    if(L.fits&&(!best||L.depth<best.depth))best=L}
+  return {best,small}}
+function constrain(){
+  const {best,small}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
+  $('fitNote').innerHTML=best?`<div class="okbox">✓ Tu programa cabe en tu terreno: ocupa ${fm(best.width)} × ${fm(best.depth)} m de ${fm(F)} × ${fm(D)} m.</div>`:
+    `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m en un nivel. Quita o deja para después algún espacio.</div>`;
+  for(const k of FITKEYS){const sel=$(k),cur=sel.value;
+    for(const b of sel._g.children){if(b.dataset.v===cur){b.disabled=false;b.title='';continue}
+      sel.value=b.dataset.v;const ok=!!bestFit().best;b.disabled=!ok;b.title=ok?'':'No cabe en tu terreno'}
+    sel.value=cur}
+}
 function build(){
   const st={};FIELDS.forEach(f=>st[f]=$(f).value);
   try{localStorage.setItem('mihaus_form',JSON.stringify(st))}catch(e){}
-  syncChips();
+  syncChips();constrain();
   {const t=v('lugar').trim().toLowerCase();const ok=MLIST.some(x=>x.toLowerCase()===t);
    $('lugarNote').textContent=ok?'✓ Ubicación encontrada':t?'Elige una opción de la lista para ubicar tu terreno en el mapa.':'';$('lugarNote').style.color=ok?'var(--ok)':''}
   const pers=Math.max(1,num('personas')),rec=1+Math.ceil(Math.max(0,pers-2)/2);
@@ -734,6 +755,18 @@ async function geocode(q){
   const k='mihaus_geo:'+q;try{const c=localStorage.getItem(k);if(c)return JSON.parse(c)}catch(e){}
   const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=gt&q='+encodeURIComponent(q+', Guatemala'));
   const j=await r.json();if(!j.length)return null;const c=[+j[0].lat,+j[0].lon];try{localStorage.setItem(k,JSON.stringify(c))}catch(e){}return c}
+const findMuni=a=>{const dep=norm((a.state||'').replace(/^departamento (de )?/i,''));
+  const cs=[a.municipality,a.county,a.city,a.town,a.village].filter(Boolean).map(norm);
+  return MLIST.find(x=>{const [mu,de]=x.split(', ').map(norm);return cs.includes(mu)&&(!dep||de===dep)})||MLIST.find(x=>cs.includes(norm(x.split(', ')[0])))};
+function setLugarFromMap(a){const m=a&&findMuni(a);if(m&&m!==v('lugar')){geoQ=m;$('lugar').value=m;build()}}
+async function nomi(path){const r=await fetch('https://nominatim.openstreetmap.org/'+path+'&format=json&addressdetails=1&accept-language=es');return r.json()}
+$('dirBtn').addEventListener('click',async()=>{const q=$('dir').value.trim();if(!q)return;const box=$('dirRes');box.textContent='Buscando…';
+  try{const mu=v('lugar').split(',')[0];const j=await nomi('search?limit=5&countrycodes=gt&q='+encodeURIComponent(q.toLowerCase().includes(norm(mu))?q:q+', '+mu));
+    box.textContent='';if(!j.length){box.textContent='No encontramos ese lugar. Prueba con otro nombre o toca el mapa para marcar tu terreno.';return}
+    for(const r of j){const b=document.createElement('button');b.type='button';b.className='dres';b.textContent=r.display_name;
+      b.addEventListener('click',()=>{center=[+r.lat,+r.lon];pinned=true;box.textContent='';setLugarFromMap(r.address);drawReal(true,15)});box.appendChild(b)}}
+  catch(e){box.textContent='No se pudo buscar ahora. Toca el mapa para marcar tu terreno.'}});
+$('dir').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('dirBtn').click()}});
 function realMap(){
   if(!window.L)return;
   const q=v('lugar').trim(),known=MLIST.some(x=>x.toLowerCase()===q.toLowerCase());
@@ -741,14 +774,15 @@ function realMap(){
     lmap=L.map(d,{scrollWheelZoom:false});
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(lmap);
     lay=L.layerGroup().addTo(lmap);lmap.setView([15.5,-90.3],7);
-    lmap.on('click',e=>{center=[e.latlng.lat,e.latlng.lng];pinned=true;drawReal(false)});
+    lmap.on('click',e=>{center=[e.latlng.lat,e.latlng.lng];pinned=true;drawReal(false);
+      nomi(`reverse?lat=${center[0]}&lon=${center[1]}&zoom=10`).then(j=>setLugarFromMap(j.address)).catch(()=>{})});
     new ResizeObserver(()=>lmap.invalidateSize()).observe($('mapFig'))}
-  $('mapNote').textContent='Mapa de OpenStreetMap. Toca el mapa para marcar dónde está tu terreno; los distribuidores y cooperativas son ejemplos ubicados a su alrededor.';
+  $('mapNote').textContent='Mapa de OpenStreetMap. Busca tu aldea en el paso 2 o toca el mapa para marcar tu terreno; el municipio se actualiza solo. Distribuidores y cooperativas son ejemplos.';
   if(known&&q!==geoQ){geoQ=q;pinned=false;
     geocode(q).then(c=>{if(c&&!pinned){center=c;drawReal(true)}}).catch(()=>{$('mapNote').textContent='No se pudo ubicar el municipio en el mapa. Toca el mapa para marcar tu terreno.'})}
   else if(center)drawReal(false);
 }
-function drawReal(fit){
+function drawReal(fit,zoom){
   if(!lmap||!center||!geo)return;lay.clearLayers();
   const off=(a,k)=>[center[0]-Math.sin(a)*k/111,center[1]+Math.cos(a)*k/(111*Math.cos(center[0]*Math.PI/180))];
   for(const r of [5,10])L.circle(center,{radius:r*1000,color:'#14213a',weight:1,opacity:.35,dashArray:'4 6',fill:false,interactive:false}).addTo(lay);
@@ -759,7 +793,7 @@ function drawReal(fit){
     L.marker(p,{icon:ic('mk-c','C'+(i+1))}).bindTooltip(t).addTo(lay)});
   L.circleMarker(center,{radius:10,color:'#fff',weight:3,fillColor:'#c8432b',fillOpacity:1}).bindTooltip('Tu terreno',{permanent:true,direction:'top',offset:[0,-10]}).addTo(lay);
   $('map').style.visibility='hidden';
-  if(fit)lmap.fitBounds(L.latLngBounds(pts).pad(0.15));
+  if(fit&&zoom)lmap.setView(center,zoom);else if(fit)lmap.fitBounds(L.latLngBounds(pts).pad(0.15));
 }
 
 // ---------- Marketplace (simulated) ----------
