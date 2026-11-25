@@ -209,12 +209,12 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
       <div class="q"><label for="frente">Frente del terreno</label><div class="unit"><input id="frente" type="number" min="4" step="0.5" value="8" inputmode="decimal"><span>m</span></div></div>
       <div class="q"><label for="fondo">Fondo del terreno</label><div class="unit"><input id="fondo" type="number" min="4" step="0.5" value="15" inputmode="decimal"><span>m</span></div></div>
     </div>
-    <div class="q"><span class="ql">Retiros desde los linderos <span class="hint">(opcional) espacio libre que dejas entre la casa y cada lindero. Para poner ventanas hacia un lado se necesita al menos 1 m de retiro.</span></span></div>
+    <div class="q"><span class="ql">Retiros desde los linderos <span class="hint">(opcional) espacio libre que dejas entre la casa y cada lindero. Según el Código Civil, no se permiten ventanas en muros construidos sobre el lindero; con cualquier retiro ya puedes abrir ventanas hacia ese lado.</span></span></div>
     <div class="row" id="retiros">
-      <div class="q" style="margin-top:6px"><label for="retIz">Izquierdo</label><div class="unit"><input id="retIz" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
-      <div class="q" style="margin-top:6px"><label for="retDe">Derecho</label><div class="unit"><input id="retDe" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
-      <div class="q" style="margin-top:6px"><label for="retFr">Frontal (calle)</label><div class="unit"><input id="retFr" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
-      <div class="q" style="margin-top:6px"><label for="retFo">Posterior (fondo)</label><div class="unit"><input id="retFo" type="number" min="0" step="0.5" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retIz">Izquierdo</label><div class="unit"><input id="retIz" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retDe">Derecho</label><div class="unit"><input id="retDe" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retFr">Frontal (calle)</label><div class="unit"><input id="retFr" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
+      <div class="q" style="margin-top:6px"><label for="retFo">Posterior (fondo)</label><div class="unit"><input id="retFo" type="number" min="0" step="0.1" value="0" inputmode="decimal"><span>m</span></div></div>
     </div>
     <div class="q"><label for="pendiente">Pendiente del terreno</label><select id="pendiente"><option value="plano">Plano</option><option value="ligera">Ligera</option><option value="fuerte">Fuerte</option></select></div>
     <div class="q"><label for="barranco">¿Está cerca de un barranco, río o talud?</label><select id="barranco"><option value="no">No</option><option value="si">Sí</option></select></div>
@@ -491,11 +491,11 @@ function layout(mode,ar={},adj={},geom=false){
     for(let j=0;j<c.h;j++){add(`v${c.x},${c.y+j}`,c.s);add(`v${c.x+c.w},${c.y+j}`,c.s)}
     const ox=c.own.x===pasX+PW?pasX+PW:pasX;for(let j=0;j<c.h;j++)seg.delete(`v${ox},${c.y+j}`)}
   const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,nook,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
-  // window wall: front or back if open, outer side if there is 1 m of clearance, otherwise toward the neighbour (colindancia)
+  // window wall: front or back if open, outer side if the wall is set back from the lot line at all (Código Civil: no windows only on walls built on the lot line), otherwise toward the neighbour (colindancia)
   const rl=num('retIz'),rr=num('retDe'),rf=num('retFr'),rb=num('retFo'),clearR=F-rl-L.width,lastIn={};L.rl=rl;L.rf=rf;L.rr=rr;L.rb=rb;
   for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
   for(const m of rooms){if(['pila','bodega'].includes(m.k)){m.wf=null;continue}
-    const backOpen=lastIn[m.x]===m&&(D-rf-(m.y+m.h)*0.5)>=1,sideOpen=m.sd==='R'?clearR>=1:rl>=1;
+    const backOpen=lastIn[m.x]===m&&(D-rf-(m.y+m.h)*0.5)>0.01,sideOpen=m.sd==='R'?clearR>0.01:rl>0.01;
     m.wf=m.y===y0?'front':backOpen?'back':sideOpen?'side':m.k==='bano'?null:'col'}
   L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
   L.fits=L.width<=F-rl-rr+1e-9&&L.depth<=D-rf-rb+1e-9;L.colBad=rooms.some(m=>m.wf==='col');L.valid=L.fits&&!L.colBad;
@@ -541,7 +541,7 @@ function constrain(){
     for(const k of FITKEYS)for(const b of $(k)._g.children){b.disabled=false;b.title='';b.classList.remove('helps')}return}
   const {best,small,winOnly}=bestFit(),F=num('frente')||8,D=num('fondo')||15,fm=x=>(Math.round(x*10)/10).toLocaleString('es-GT');
   $('fitNote').innerHTML=best?`<div class="okbox">✓ Tu programa cabe en tu terreno: ocupa ${fm(best.width)} × ${fm(best.depth)} m de ${fm(F)} × ${fm(D)} m.</div>`:
-    winOnly?`<div class="flag"><b>✗ Cabe en tu terreno, pero algún dormitorio, cocina o sala quedaría con su única ventana hacia el vecino.</b> No se permiten ventanas en la colindancia: deja un retiro lateral o posterior de al menos 1 m en el paso 2, o cambia tus espacios. <button type="button" class="ghost" onclick="location.hash='terreno'">Ajustar retiros</button></div>`:
+    winOnly?`<div class="flag"><b>✗ Cabe en tu terreno, pero algún dormitorio, cocina o sala quedaría con su única ventana hacia el vecino.</b> No se permiten ventanas en muros sobre el lindero: deja un retiro lateral o posterior en el paso 2, o cambia tus espacios. <button type="button" class="ghost" onclick="location.hash='terreno'">Ajustar retiros</button></div>`:
     `<div class="flag"><b>✗ Lo que pediste no cabe en tu terreno de ${fm(F)} × ${fm(D)} m${num('retIz')+num('retDe')+num('retFr')+num('retFo')>0?' con los retiros que pusiste':''}.</b> Necesitaría al menos ${fm(small?small.width:0)} × ${fm(small?small.depth:0)} m de área construible en un nivel. Las opciones con borde verde punteado ayudan a que quepa.</div>`;
   const area=x=>x?x.width*x.depth:1e9,curA=area(small);
   for(const k of FITKEYS){const sel=$(k),cur=sel.value;
