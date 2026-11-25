@@ -200,6 +200,13 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     </div>
     <div class="q"><label for="credito">¿Te interesa un crédito?</label><select id="credito"><option value="si">Sí, quiero opciones</option><option value="no">No</option></select></div>
   </section>
+
+  <section>
+    <h2><span class="n">5</span>Mejoras que cambian la vida</h2>
+    <p class="sub">La base ya trae piso de concreto, baño, pila, ventanas, cocina ventilada y estructura NSE 4. Estas mejoras suman encima.</p>
+    <div id="ups"></div>
+    <p><b id="upTotal"></b></p>
+  </section>
 </div>
 
 <div id="side">
@@ -242,13 +249,6 @@ input[type=range]{padding:0;min-height:32px;accent-color:var(--red)}
     <div class="pros" id="coops" style="margin-top:8px"></div>
     <h3>Maneras de financiar tu casa</h3>
     <div id="fin"></div>
-  </section>
-
-  <section>
-    <h2>Mejoras que cambian la vida</h2>
-    <p class="sub">La base ya trae piso de concreto, baño, pila, ventanas, cocina ventilada y estructura NSE 4. Estas mejoras suman encima.</p>
-    <div id="ups"></div>
-    <p><b id="upTotal"></b></p>
   </section>
 
   <section>
@@ -375,13 +375,18 @@ function layout(mode,ar={},adj={},geom=false){
   const mods=[];
   for(const it of its){const c=two&&ar.zone?(isD(it)?cols[1]:cols[0]):cols.reduce((p,q)=>q.y<p.y?q:p);
     mods.push({l:it[0],x:c.x,y:c.y,w:6,h:it[1],s:it[2],k:it[3],sd:c.sd});c.y+=it[1]}
-  let maxY=Math.max(...cols.map(c=>c.y));const rooms=mods.slice();let cur=null,nook=null;
-  // indoor pila goes into leftover hallway space: beside the shorter column if it leaves 1.5 m, otherwise as an alcove at the hallway's end
+  let maxY=Math.max(...cols.map(c=>c.y));const rooms=mods.slice();let cur=null,nook=null,clos=null;
+  // the hallway only runs to the last door (1.5 m into the deepest room); the dead end behind it is put to use
+  const hEnd=Math.min(maxY,Math.max(...rooms.map(m=>m.k==='local'?m.y+m.h:m.y+Math.min(m.h,3))));
+  const strip=maxY-hEnd;
   if(v('pila')==='dentro'){const sh=cols.find(c=>maxY-c.y>=3);
-    if(sh)nook={l:'Pila',x:sh.sd==='L'?sh.x+3:sh.x,y:sh.y,w:3,h:3,s:1,k:'pilan',sd:sh.sd,at:'side'};
+    if(strip>=2)nook={l:'Pila',x:pasX,y:hEnd,w:PW,h:strip,s:1,k:'pilan',sd:'R',at:'tail'};
+    else if(sh)nook={l:'Pila',x:sh.sd==='L'?sh.x+3:sh.x,y:sh.y,w:3,h:3,s:1,k:'pilan',sd:sh.sd,at:'side'};
     else nook={l:'Pila',x:pasX,y:maxY,w:PW,h:3,s:1,k:'pilan',sd:'R',at:'end'}}
+  if(strip>=1&&!(nook&&nook.at==='tail')){const own=rooms.filter(m=>m.y+m.h===maxY&&m.y<=hEnd).sort((a,b)=>a.s-b.s)[0];
+    if(own)clos={l:'Clóset',x:pasX,y:hEnd,w:PW,h:strip,s:own.s,k:'clos',sd:own.sd,own}}
   const reach=nook?rooms.concat([nook]):rooms;
-  for(let j=y0;j<maxY;j++){const st=Math.min(...reach.filter(m=>m.y+m.h>j).map(m=>m.s));
+  for(let j=y0;j<hEnd;j++){const st=Math.min(...reach.filter(m=>m.y+m.h>j).map(m=>m.s));
     if(cur&&cur.s===st)cur.h++;else{cur={l:'Pasillo',x:pasX,y:j,w:PW,h:1,s:st,k:'pas'};mods.push(cur)}}
   if(cor)mods.unshift({l:'Corredor',x:0,y:0,w:Wt,h:y0,s:stg(o('corredor')),k:'cor'});
   const seg=new Map(),add=(k,s)=>{if(!seg.has(k)||seg.get(k)>s)seg.set(k,s)};
@@ -389,19 +394,24 @@ function layout(mode,ar={},adj={},geom=false){
     if(m.k!=='pas')for(let i=0;i<m.w;i++){add(`h${m.x+i},${m.y}`,m.s);add(`h${m.x+i},${m.y+m.h}`,m.s)}
     for(let j=0;j<m.h;j++){add(`v${m.x},${m.y+j}`,m.s);add(`v${m.x+m.w},${m.y+j}`,m.s)}}
   const pas=mods.filter(m=>m.k==='pas');
-  if(pas.length)for(let i=0;i<PW;i++){add(`h${pasX+i},${y0}`,pas[0].s);add(`h${pasX+i},${maxY}`,pas[pas.length-1].s)}
+  if(pas.length)for(let i=0;i<PW;i++){add(`h${pasX+i},${y0}`,pas[0].s);add(`h${pasX+i},${hEnd}`,pas[pas.length-1].s)}
   if(nook){mods.push(nook);const n=nook;
     for(let i=0;i<n.w;i++){add(`h${n.x+i},${n.y}`,1);add(`h${n.x+i},${n.y+n.h}`,1)}
     for(let j=0;j<n.h;j++){add(`v${n.x},${n.y+j}`,1);add(`v${n.x+n.w},${n.y+j}`,1)}
     if(n.at==='side'){const hx=n.sd==='L'?n.x+n.w:n.x;for(let j=0;j<n.h;j++)seg.delete(`v${hx},${n.y+j}`)}
+    else if(n.at==='tail'){for(let i=0;i<PW;i++)seg.delete(`h${pasX+i},${hEnd}`)}
     else{for(let i=0;i<PW;i++)seg.delete(`h${pasX+i},${maxY}`);maxY+=n.h}
     if(n.at==='side'){const r=rooms.find(m=>m.x===(n.sd==='L'?n.x-3:n.x)&&m.y+m.h===n.y);if(r)r.wshift=true}}
+  if(clos){const c=clos;mods.push(c);
+    for(let i=0;i<c.w;i++){add(`h${c.x+i},${c.y}`,c.s);add(`h${c.x+i},${c.y+c.h}`,c.s)}
+    for(let j=0;j<c.h;j++){add(`v${c.x},${c.y+j}`,c.s);add(`v${c.x+c.w},${c.y+j}`,c.s)}
+    const ox=c.own.x===pasX+PW?pasX+PW:pasX;for(let j=0;j<c.h;j++)seg.delete(`v${ox},${c.y+j}`)}
   const L={mode,ar,mods,seg,F,D,width:Wt*0.5,depth:maxY*0.5,nook,sig:mods.map(m=>m.l+m.x+','+m.y).join('|')};
   // window wall: front or back if open, outer side if there is 1 m of clearance, otherwise toward the neighbour (colindancia)
   const clear=F-L.width,lastIn={};
   for(const m of rooms)if(!lastIn[m.x]||m.y>lastIn[m.x].y)lastIn[m.x]=m;
   for(const m of rooms)m.wf=['pila','bodega'].includes(m.k)?null:m.y===y0?'front':lastIn[m.x]===m?'back':(m.sd==='R'&&clear>=1)?'side':'col';
-  L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.concat(nook?[nook]:[]).reduce((a,m)=>a+m.w*m.h*0.25,0);
+  L.area=mods.reduce((a,m)=>a+m.w*m.h*0.25,0);L.circ=pas.reduce((a,m)=>a+m.w*m.h*0.25,0);
   L.fits=L.width<=F&&L.depth<=D;
   if(geom)return L;
   return Object.assign(L,quant(L));
@@ -413,7 +423,7 @@ function quant(L){
     const Lw=[...L.seg.values()].filter(x=>x===s).length*0.5,N=Math.ceil(Lw/1.5),ms=L.mods.filter(m=>m.s===s);
     let open=0,win=0,doors=0,area=0,amb=0;
     for(const m of ms){area+=m.w*m.h*0.25;
-      if(m.k==='cor'||m.k==='pas'||m.k==='pilan')continue;doors++;amb++;if(m.k==='local')doors++;
+      if(m.k==='cor'||m.k==='pas'||m.k==='pilan'||m.k==='clos')continue;doors++;amb++;if(m.k==='local')doors++;
       const ws=!m.wf?[0,0]:m.k==='bano'?[0.5,0.5]:WS[winSel],w=ws[0]*ws[1];win+=w;open+=w+0.9*2.1}
     if(s===1){doors++;open+=1.0*2.1}
     const wall=Math.max(0,Lw*H-open),conc=Lw*0.4*0.2+Lw*0.15*0.2*2+N*H*0.15*0.15+area*0.08,mort=wall*0.02;
@@ -518,7 +528,7 @@ function drawPlan(){
   const L=last,svg=$('plan'),W=svg.clientWidth||600,Hh=svg.clientHeight||480;
   const LW=Math.max(L.F,L.width),LD=Math.max(L.D,L.depth),pad=34,s=Math.min((W-pad*2)/LW,(Hh-pad*2)/LD);
   const ox=(W-LW*s)/2,oy=(Hh-LD*s)/2,Y=m=>oy+(LD-m)*s,X=m=>ox+m*s;
-  const TC={pilan:'--serv',dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
+  const TC={clos:'--serv',pilan:'--serv',dorm:'--dorm',dorm1:'--dorm',bano:'--bano',cocina:'--coc',comedor:'--coc',salacom:'--coc',sala:'--sala',local:'--loc',pila:'--serv',bodega:'--serv',pas:'--pas',cor:'--pas'};
   const fc=m=>`var(${TC[m.k]})`,op={1:1,2:0.82,3:0.6},tc={1:'var(--ink)',2:'var(--ink)',3:'var(--ink)'};
   let base=`<defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--ink)" stroke-opacity=".28" stroke-width="2"/></pattern></defs>`;
   base+=`<rect x="${ox}" y="${Y(L.D)}" width="${L.F*s}" height="${L.D*s}" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/>`;
@@ -531,6 +541,8 @@ function drawPlan(){
     for(let i=m.x;i<m.x+m.w;i++)for(let j=m.y;j<m.y+m.h;j++)occ.add(i+','+j);
     fill+=`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="${fc(m)}" opacity="${op[m.s]}"/>`+(m.s===3?`<rect x="${x}" y="${yy}" width="${w}" height="${hh}" fill="url(#hatch)"/>`:'');
     if(m.k==='pas')continue;
+    if(m.k==='clos'){const fs2=9.5,t='Clóset',pw3=t.length*fs2*0.6+10;for(let k2=1;k2<4;k2++){const yy2=Y(m.y*0.5+k2*m.h*0.5/4);fur+=`<line x1="${x+3}" y1="${yy2}" x2="${x+w-3}" y2="${yy2}" stroke="var(--ink)" stroke-opacity=".35"/>`}
+      if(hh>16)labels+=`<rect x="${x+w/2-pw3/2}" y="${yy+hh/2-9}" width="${pw3}" height="17" rx="8" fill="#ffffff" fill-opacity=".62"/><text x="${x+w/2}" y="${yy+hh/2}" dy=".35em" text-anchor="middle" font-size="${fs2}" font-weight="700" fill="#14213a">${t}</text>`;continue}
     if(m.k==='pilan'){const pw2=Math.min(1.1,m.w*0.5-0.2),cx=m.x*0.5+m.w*0.25,top=(m.y+m.h)*0.5;
       fur+=`<rect x="${X(cx-pw2/2)}" y="${Y(top-0.08)}" width="${pw2*s}" height="${0.62*s}" rx="2" fill="none" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.1"/><line x1="${X(cx)}" y1="${Y(top-0.08)}" x2="${X(cx)}" y2="${Y(top-0.7)}" stroke="var(--ink)" stroke-opacity=".7"/>`;
       const fs2=10,pw3=4*fs2*0.6+12;labels+=`<rect x="${x+w/2-pw3/2}" y="${yy+hh-fs2-11}" width="${pw3}" height="${fs2+7}" rx="8" fill="#ffffff" fill-opacity=".62"/><text x="${x+w/2}" y="${yy+hh-7.5-fs2/2+3}" dy=".35em" text-anchor="middle" font-size="${fs2}" font-weight="700" fill="#14213a">Pila</text>`;continue}
@@ -593,10 +605,10 @@ function flags(){
   if(nc)r.push(`${nc} espacio${nc>1?'s':''} solo tiene${nc>1?'n':''} pared hacia el vecino (ventana punteada). Un especialista puede proponer un patio de luz o una ventana alta; prueba también otra distribución.`);
   if(v('otroTxt').trim())r.push('Pediste un espacio adicional que revisará un especialista.');
   blocked=f.length>0;
-  $('flags').innerHTML=(f.length?`<div class="flag"><b>Necesitas un especialista antes de construir.</b><br>${f.join('<br>')}</div>`:'')+
+  $('flags').innerHTML=(f.length?`<div class="flag"><b>Se recomienda un especialista antes de construir.</b><br>${f.join('<br>')}</div>`:'')+
     r.map(x=>`<div class="okbox">${x}</div>`).join('')+
     '<div class="okbox">Guatemala es zona sísmica: la evaluación del suelo por un profesional siempre es recomendada.</div>';
-  $('decision').innerHTML=blocked?'<p><b>Tu proyecto necesita un especialista antes de construir.</b> Puedes descargar tu presupuesto ahora y llevarlo a la revisión.</p>':
+  $('decision').innerHTML=blocked?'<p><b>Se recomienda un especialista antes de construir.</b> Puedes descargar tu presupuesto ahora y llevarlo a la revisión.</p>':
     '<p>Descarga tu presupuesto ahora. Si quieres sugerencias, un arquitecto o ingeniero puede revisarlo.</p>';
 }
 
@@ -622,7 +634,8 @@ function upgrades(){
   if(v('luz')==='no')L.push(['solar',1,'Mediano plazo','Luz sin velas y carga de teléfono','MEM / BID']);
   L.push(['lluvia',1,'Mediano plazo','Agua para la pila en temporada de lluvia','TECHO']);
   if(v('agua')==='si')L.push(['biodig',1,'Mediano plazo','Mejor tratamiento de aguas negras','OMS/UNICEF JMP']);
-  $('ups').innerHTML=L.map(([k,n,t,b,s])=>`<label class="up"><input type="checkbox" data-k="${k}" data-n="${n}"><span><b>${PDEF[k].n}</b><br><span class="note">${b} · respaldo: ${s}</span></span><span class="pill">${t}<br>${Q(n*pr(k))}</span></label>`).join('');
+  const was=new Set([...document.querySelectorAll('#ups input:checked')].map(c=>c.dataset.k));
+  $('ups').innerHTML=L.map(([k,n,t,b,s])=>`<label class="up"><input type="checkbox" data-k="${k}" data-n="${n}" ${was.has(k)?'checked':''}><span><b>${PDEF[k].n}</b><br><span class="note">${b} · respaldo: ${s}</span></span><span class="pill">${t}<br>${Q(n*pr(k))}</span></label>`).join('');
   upTot();
 }
 function upTot(){let t=0;document.querySelectorAll('#ups input:checked').forEach(c=>t+=c.dataset.n*pr(c.dataset.k));
@@ -638,15 +651,15 @@ $('mat').addEventListener('change',e=>{const k=e.target.dataset.p;if(!k)return;P
   try{localStorage.setItem('mihaus_precios',JSON.stringify(P))}catch(x){}build()});
 $('resetP').addEventListener('click',()=>{P={};try{localStorage.removeItem('mihaus_precios')}catch(x){}build()});
 
-$('form').addEventListener('input',e=>{if(e.target.id==='story')return;clearTimeout(window._t);window._t=setTimeout(build,250)});
-$('form').addEventListener('change',e=>{if(e.target.id!=='story')build()});
+$('form').addEventListener('input',e=>{if(e.target.id==='story'||e.target.closest('#ups'))return;clearTimeout(window._t);window._t=setTimeout(build,250)});
+$('form').addEventListener('change',e=>{if(e.target.id!=='story'&&!e.target.closest('#ups'))build()});
 
 const DISC='Lo que recibes es un diagrama ilustrativo y un presupuesto de materiales de referencia. No son planos constructivos, no es diseño estructural ni evaluación de suelo, y no sirve para tramitar licencia. Guatemala es zona sísmica y el presupuesto supone suelo firme y una casa de un nivel. No incluye mano de obra, transporte, licencias, terreno ni imprevistos.';
 function resumen(){
   const {tot,cost,mods}=last,esp=mods.filter(m=>m.k!=='cor'&&m.k!=='pas').map(m=>m.l).join(', ');
   return `Tu casa en ${v('lugar')}, con la distribución ${VARS.find(x=>x[0]===sel)[1].toLowerCase()}, tendría: ${esp}. Los materiales de la casa completa cuestan entre ${Q(tot*0.85)} y ${Q(tot*1.15)}. `+
    `La primera etapa, el núcleo, cuesta cerca de ${Q(cost[1])}. ${$('plazo').textContent} `+
-   (blocked?'Por las condiciones del terreno, necesitas que un especialista revise el proyecto antes de construir. ':'')+
+   (blocked?'Por las condiciones del terreno, se recomienda que un especialista revise el proyecto antes de construir. ':'')+
    'Recuerda: esto no incluye mano de obra ni transporte, y no son planos constructivos.';
 }
 $('copy').addEventListener('click',()=>{navigator.clipboard.writeText(resumen()+'\n\n'+DISC).then(()=>$('copyNote').textContent='Resumen copiado.',()=>$('copyNote').textContent='No se pudo copiar en este navegador.')});
@@ -844,7 +857,7 @@ function recTipos(){const t=new Set();
 function renderMarket(){
   const [mu,de]=v('lugar').split(',').map(norm),rt=recTipos();
   $('mkSub').textContent=`Tu proyecto: ${v('lugar')} · ${Math.round(last.area)} m² · materiales ${Q(last.tot*0.85)} – ${Q(last.tot*1.15)}.`;
-  $('mkRec').textContent=`Para tu terreno te sugerimos: ${[...rt].map(k=>TIPOS[k]).join(' y ')}.`+(blocked?' Tu proyecto necesita esta revisión antes de construir.':'');
+  $('mkRec').textContent=`Para tu terreno te sugerimos: ${[...rt].map(k=>TIPOS[k]).join(' y ')}.`+(blocked?' Se recomienda esta revisión antes de construir.':'');
   chipRow($('fEsp'),[['rec','Sugerido para ti'],['todas','Todas'],...Object.entries(TIPOS)],fEsp,k=>fEsp=k);
   chipRow($('fLoc'),[['muni','Mi municipio'],['depto','Mi departamento'],['pais','Todo el país']],fLoc,k=>fLoc=k);
   chipRow($('fOrd'),[['cerca','Más cerca'],['precio','Menor precio'],['calif','Mejor calificado']],fOrd,k=>fOrd=k);
